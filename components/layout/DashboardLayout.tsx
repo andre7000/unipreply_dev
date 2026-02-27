@@ -21,11 +21,16 @@ import { StudentSelector } from "@/components/StudentSelector";
 interface DashboardLayoutProps {
   children: ReactNode;
   title?: string;
+  chatContext?: {
+    collegeName?: string;
+    pageType?: string;
+  };
 }
 
 export function DashboardLayout({
   children,
   title = "Dashboard",
+  chatContext,
 }: DashboardLayoutProps) {
   const router = useRouter();
   const { currentUser, signOut } = useAuth();
@@ -234,7 +239,7 @@ export function DashboardLayout({
               className="shrink-0 min-h-0 border-l flex flex-col bg-background"
               style={{ width: chatWidth }}
             >
-              <AIChatDrawer open={chatOpen} onOpenChange={setChatOpen} />
+              <AIChatDrawer open={chatOpen} onOpenChange={setChatOpen} context={chatContext} />
             </aside>
           </>
         )}
