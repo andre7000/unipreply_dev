@@ -189,12 +189,18 @@ export default async function handler(
 
 Be concise, friendly, and informative. When discussing specific colleges, use the Common Data Set (CDS) data provided below. If data is not available for a school, acknowledge that.
 
-CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE:
-1. NEVER use asterisks (*) for any purpose - no bold, no italics, no bullet points with asterisks
-2. NEVER use markdown formatting of any kind
-3. For bullet points, use dashes (-) only
-4. Write school names in plain text, not bold: "Yale University" not "**Yale University**"
-5. Keep responses clean and simple with plain text only`;
+FORMATTING RULES:
+1. Do NOT use asterisks (*) for bold or italics
+2. For bullet points, use dashes (-) only
+3. Write school names in plain text, not bold
+4. When comparing 2+ schools, ALWAYS use a simple text table format like this:
+
+Metric            | Yale    | Brown
+------------------|---------|--------
+Acceptance Rate   | 3.9%    | 5.4%
+SAT Middle 50%    | 1480-1560| 1510-1560
+
+5. Tables make comparisons much easier to read - use them!`;
 
     if (context?.collegeName) {
       systemPrompt += `\n\nThe user is currently viewing the page for ${context.collegeName}.`;

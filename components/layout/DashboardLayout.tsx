@@ -14,6 +14,7 @@ import {
   Award,
   ChevronLeft,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import { AIChatDrawer } from "@/components/chat/AIChatDrawer";
 import { StudentSelector } from "@/components/StudentSelector";
@@ -161,6 +162,13 @@ export function DashboardLayout({
                 >
                   <Award className="size-4" />
                   Scholarships
+                </Link>
+                <Link
+                  href="/chat"
+                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <MessageCircle className="size-4" />
+                  Chat
                 </Link>
               </div>
               <div className="flex-1" />
