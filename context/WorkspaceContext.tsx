@@ -42,7 +42,8 @@ interface WorkspaceProviderProps {
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { currentUser } = useAuth();
   const {
-    activeWorkspace,
+    workspace,
+    students,
     activeStudent,
     setActiveStudent,
     addStudent,
@@ -51,14 +52,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     loading,
   } = useWorkspaces(currentUser);
 
-  const students = useMemo(
-    () => activeWorkspace?.students ?? [],
-    [activeWorkspace]
-  );
-
   const value = useMemo(
     () => ({
-      activeWorkspace,
+      activeWorkspace: workspace,
       activeStudent,
       setActiveStudent,
       students,
@@ -68,7 +64,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       loading,
     }),
     [
-      activeWorkspace,
+      workspace,
       activeStudent,
       setActiveStudent,
       students,

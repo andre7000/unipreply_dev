@@ -51,10 +51,7 @@ export default function CollegeDetail() {
   }
 
   return (
-    <DashboardLayout
-      title={college.label}
-      chatContext={{ collegeName: college.label, pageType: "college-detail" }}
-    >
+    <DashboardLayout title={college.label}>
       <div className="space-y-8">
         {/* Header with high-level info */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

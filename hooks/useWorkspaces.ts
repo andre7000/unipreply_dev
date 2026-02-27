@@ -1,24 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import {
-  getWorkspacesForUser,
   ensureWorkspaceForUser,
+  getStudentsForWorkspace,
   addStudent as addStudentLib,
   updateStudent as updateStudentLib,
   removeStudent as removeStudentLib,
 } from "@/lib/workspace";
-import { db } from "@/config/firebaseConfig";
 import type { Workspace, WorkspaceStudent } from "@/types/workspace";
 
 export type WorkspaceWithId = Workspace & { id: string };
 
 interface UseWorkspacesReturn {
-  workspaces: WorkspaceWithId[];
-  activeWorkspace: WorkspaceWithId | null;
+  workspace: WorkspaceWithId | null;
+  students: WorkspaceStudent[];
   activeStudent: WorkspaceStudent | null;
   setActiveStudent: (student: WorkspaceStudent | null) => void;
-  refreshWorkspaces: () => Promise<void>;
+  refreshData: () => Promise<void>;
   addStudent: (student: Omit<WorkspaceStudent, "id">) => Promise<WorkspaceStudent>;
   updateStudent: (
     studentId: string,
@@ -29,44 +27,37 @@ interface UseWorkspacesReturn {
 }
 
 export function useWorkspaces(user: User | null): UseWorkspacesReturn {
-  const [workspaces, setWorkspaces] = useState<WorkspaceWithId[]>([]);
-  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceWithId | null>(
-    null
-  );
-  const [activeStudent, setActiveStudentInternal] =
-    useState<WorkspaceStudent | null>(null);
+  const [workspace, setWorkspace] = useState<WorkspaceWithId | null>(null);
+  const [students, setStudents] = useState<WorkspaceStudent[]>([]);
+  const [activeStudent, setActiveStudentInternal] = useState<WorkspaceStudent | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      let list = await getWorkspacesForUser(user.uid);
-      if (list.length === 0) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          const migrated = await ensureWorkspaceForUser(
-            user.uid,
-            data.userType ?? "student",
-            data.displayName
-          );
-          if (migrated) list = migrated;
-        }
-      }
-      setWorkspaces(list);
-      const first = list[0] ?? null;
-      setActiveWorkspace(first);
-      if (first?.students?.length) {
-        setActiveStudentInternal(first.students[0]);
+      // Ensure workspace exists for user
+      const displayName = user.displayName || user.email?.split("@")[0];
+      const ws = await ensureWorkspaceForUser(user.uid, displayName);
+      setWorkspace(ws);
+
+      // Load students from subcollection
+      const studentList = await getStudentsForWorkspace(ws.id);
+      setStudents(studentList);
+
+      // Set active student
+      if (studentList.length > 0) {
+        // Try to keep current active student if still exists
+        const currentId = activeStudent?.id;
+        const found = studentList.find((s) => s.id === currentId);
+        setActiveStudentInternal(found ?? studentList[0]);
       } else {
         setActiveStudentInternal(null);
       }
     } catch (err) {
-      console.error("Error loading workspaces:", err);
-      setWorkspaces([]);
-      setActiveWorkspace(null);
+      console.error("Error loading workspace:", err);
+      setWorkspace(null);
+      setStudents([]);
       setActiveStudentInternal(null);
     } finally {
       setLoading(false);
@@ -75,8 +66,8 @@ export function useWorkspaces(user: User | null): UseWorkspacesReturn {
 
   useEffect(() => {
     if (!user) {
-      setWorkspaces([]);
-      setActiveWorkspace(null);
+      setWorkspace(null);
+      setStudents([]);
       setActiveStudentInternal(null);
       setLoading(false);
       return;
@@ -89,52 +80,46 @@ export function useWorkspaces(user: User | null): UseWorkspacesReturn {
     setActiveStudentInternal(student);
   };
 
-  const refreshWorkspaces = useCallback(async () => {
+  const refreshData = useCallback(async () => {
     if (user) await load();
   }, [load, user]);
 
   const addStudent = useCallback(
     async (student: Omit<WorkspaceStudent, "id">) => {
-      const ws = workspaces[0];
-      if (!ws) throw new Error("No workspace");
-      const s = await addStudentLib(ws.id, student);
-      await refreshWorkspaces();
-      return s;
+      if (!workspace) throw new Error("No workspace");
+      const newStudent = await addStudentLib(workspace.id, student);
+      await refreshData();
+      // Set the newly added student as active
+      setActiveStudentInternal(newStudent);
+      return newStudent;
     },
-    [workspaces, refreshWorkspaces]
+    [workspace, refreshData]
   );
 
   const updateStudent = useCallback(
-    async (
-      studentId: string,
-      updates: Partial<Omit<WorkspaceStudent, "id">>
-    ) => {
-      const ws = workspaces[0];
-      if (!ws) throw new Error("No workspace");
-      await updateStudentLib(ws.id, studentId, updates);
-      await refreshWorkspaces();
+    async (studentId: string, updates: Partial<Omit<WorkspaceStudent, "id">>) => {
+      if (!workspace) throw new Error("No workspace");
+      await updateStudentLib(workspace.id, studentId, updates);
+      await refreshData();
     },
-    [workspaces, refreshWorkspaces]
+    [workspace, refreshData]
   );
 
   const removeStudent = useCallback(
     async (studentId: string) => {
-      const ws = workspaces[0];
-      if (!ws) throw new Error("No workspace");
-      await removeStudentLib(ws.id, studentId);
-      await refreshWorkspaces();
-      const next = workspaces[0]?.students?.find((s) => s.id !== studentId);
-      setActiveStudentInternal(next ?? null);
+      if (!workspace) throw new Error("No workspace");
+      await removeStudentLib(workspace.id, studentId);
+      await refreshData();
     },
-    [workspaces, refreshWorkspaces]
+    [workspace, refreshData]
   );
 
   return {
-    workspaces,
-    activeWorkspace,
+    workspace,
+    students,
     activeStudent,
     setActiveStudent,
-    refreshWorkspaces,
+    refreshData,
     addStudent,
     updateStudent,
     removeStudent,

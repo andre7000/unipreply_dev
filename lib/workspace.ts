@@ -7,35 +7,21 @@ import {
   query,
   where,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/config/firebaseConfig";
 import type { Workspace, WorkspaceStudent } from "@/types/workspace";
-import type { UserType } from "@/types/profile";
 
-export async function createDefaultWorkspace(
+// ============ Workspace Operations ============
+
+export async function createWorkspace(
   ownerId: string,
-  userType: UserType,
-  displayName?: string
+  name: string = "My Workspace"
 ): Promise<string> {
-  const studentId = crypto.randomUUID?.() ?? `student_${Date.now()}`;
-  const students: WorkspaceStudent[] =
-    userType === "student"
-      ? [
-          {
-            id: studentId,
-            name: displayName ?? "My Profile",
-            stats: {},
-            savedColleges: [],
-          },
-        ]
-      : [];
-
   const workspaceData = {
-    name: userType === "parent" ? "Family" : displayName ?? "My Workspace",
+    name,
     ownerId,
-    members: [{ userId: ownerId, role: "admin" as const }],
-    students,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -60,43 +46,58 @@ export async function getWorkspacesForUser(
 
 export async function ensureWorkspaceForUser(
   userId: string,
-  userType: string,
   displayName?: string
-): Promise<(Workspace & { id: string })[] | null> {
+): Promise<Workspace & { id: string }> {
   const list = await getWorkspacesForUser(userId);
-  if (list.length > 0) return list;
+  if (list.length > 0) return list[0];
 
-  await createDefaultWorkspace(
+  const workspaceId = await createWorkspace(
     userId,
-    userType as import("@/types/profile").UserType,
-    displayName
+    displayName ? `${displayName}'s Workspace` : "My Workspace"
   );
-  return getWorkspacesForUser(userId);
+  
+  const workspaceRef = doc(db, "workspaces", workspaceId);
+  const snap = await getDoc(workspaceRef);
+  return { id: workspaceId, ...snap.data() } as Workspace & { id: string };
+}
+
+// ============ Student Operations (Subcollection) ============
+
+export async function getStudentsForWorkspace(
+  workspaceId: string
+): Promise<WorkspaceStudent[]> {
+  const studentsRef = collection(db, "workspaces", workspaceId, "students");
+  const snapshot = await getDocs(studentsRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as WorkspaceStudent[];
 }
 
 export async function addStudent(
   workspaceId: string,
   student: Omit<WorkspaceStudent, "id">
 ): Promise<WorkspaceStudent> {
-  const studentId = crypto.randomUUID?.() ?? `student_${Date.now()}`;
-  const newStudent: WorkspaceStudent = {
-    ...student,
-    id: studentId,
+  const studentsRef = collection(db, "workspaces", workspaceId, "students");
+  
+  const studentData = {
+    name: student.name,
     stats: student.stats ?? {},
     netPriceProfile: student.netPriceProfile ?? {},
-    savedColleges: student.savedColleges ?? [],
+    mySchools: student.mySchools ?? [],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
-  const workspaceRef = doc(db, "workspaces", workspaceId);
-  const snap = await getDoc(workspaceRef);
-  if (!snap.exists()) throw new Error("Workspace not found");
-
-  const students = (snap.data().students ?? []) as WorkspaceStudent[];
-  await updateDoc(workspaceRef, {
-    students: [...students, newStudent],
-    updatedAt: serverTimestamp(),
-  });
-  return newStudent;
+  const docRef = await addDoc(studentsRef, studentData);
+  
+  return {
+    id: docRef.id,
+    ...student,
+    stats: student.stats ?? {},
+    netPriceProfile: student.netPriceProfile ?? {},
+    mySchools: student.mySchools ?? [],
+  };
 }
 
 export async function updateStudent(
@@ -104,45 +105,48 @@ export async function updateStudent(
   studentId: string,
   updates: Partial<Omit<WorkspaceStudent, "id">>
 ): Promise<void> {
-  const workspaceRef = doc(db, "workspaces", workspaceId);
-  const snap = await getDoc(workspaceRef);
-  if (!snap.exists()) throw new Error("Workspace not found");
+  const studentRef = doc(db, "workspaces", workspaceId, "students", studentId);
+  const snap = await getDoc(studentRef);
+  
+  if (!snap.exists()) throw new Error("Student not found");
 
-  const students = (snap.data().students ?? []) as WorkspaceStudent[];
-  const idx = students.findIndex((s) => s.id === studentId);
-  if (idx === -1) throw new Error("Student not found");
-
-  const existing = students[idx];
-  const merged: WorkspaceStudent = {
-    ...existing,
+  const existing = snap.data() as Omit<WorkspaceStudent, "id">;
+  
+  const merged = {
     ...updates,
+    // Deep merge for nested objects
     stats: updates.stats
       ? { ...(existing.stats ?? {}), ...updates.stats }
       : existing.stats,
     netPriceProfile: updates.netPriceProfile
       ? { ...(existing.netPriceProfile ?? {}), ...updates.netPriceProfile }
       : existing.netPriceProfile,
-  };
-  students[idx] = merged;
-  await updateDoc(workspaceRef, {
-    students,
+    // Arrays are replaced entirely (mySchools)
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  await updateDoc(studentRef, merged);
 }
 
 export async function removeStudent(
   workspaceId: string,
   studentId: string
 ): Promise<void> {
-  const workspaceRef = doc(db, "workspaces", workspaceId);
-  const snap = await getDoc(workspaceRef);
-  if (!snap.exists()) throw new Error("Workspace not found");
+  const studentRef = doc(db, "workspaces", workspaceId, "students", studentId);
+  await deleteDoc(studentRef);
+}
 
-  const students = (snap.data().students ?? []).filter(
-    (s: WorkspaceStudent) => s.id !== studentId
-  );
-  await updateDoc(workspaceRef, {
-    students,
-    updatedAt: serverTimestamp(),
-  });
+export async function getStudent(
+  workspaceId: string,
+  studentId: string
+): Promise<WorkspaceStudent | null> {
+  const studentRef = doc(db, "workspaces", workspaceId, "students", studentId);
+  const snap = await getDoc(studentRef);
+  
+  if (!snap.exists()) return null;
+  
+  return {
+    id: snap.id,
+    ...snap.data(),
+  } as WorkspaceStudent;
 }

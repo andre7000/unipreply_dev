@@ -17,7 +17,7 @@ export function StudentSelector() {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <User className="size-4" />
-        <span>Viewing: —</span>
+        <span>—</span>
       </div>
     );
   }
@@ -26,7 +26,7 @@ export function StudentSelector() {
     return (
       <div className="flex items-center gap-2 text-sm">
         <User className="size-4 text-muted-foreground" />
-        <span>Viewing: {students[0].name}</span>
+        <span>{students[0].name}</span>
       </div>
     );
   }

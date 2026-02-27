@@ -86,7 +86,7 @@ export default function Student() {
         name: addName.trim(),
         stats,
         netPriceProfile,
-        savedColleges: [],
+        mySchools: [],
       });
       setAddOpen(false);
       setAddName("");
@@ -373,9 +373,9 @@ export default function Student() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          Saved colleges
+                          My Schools
                         </span>
-                        <span>{student.savedColleges?.length ?? 0}</span>
+                        <span>{student.mySchools?.length ?? 0}</span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
                         <div
@@ -383,7 +383,7 @@ export default function Student() {
                           style={{
                             width: `${Math.min(
                               100,
-                              ((student.applicationsStarted ?? 0) / 10) * 100
+                              ((student.mySchools?.length ?? 0) / 15) * 100
                             )}%`,
                           }}
                         />

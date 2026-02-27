@@ -1,4 +1,4 @@
-import { ReactNode, useState, useCallback, useEffect } from "react";
+import { ReactNode, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@/context/AuthContext";
@@ -15,64 +15,22 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageCircle,
+  ListChecks,
 } from "lucide-react";
-import { AIChatDrawer } from "@/components/chat/AIChatDrawer";
 import { StudentSelector } from "@/components/StudentSelector";
 
 interface DashboardLayoutProps {
   children: ReactNode;
   title?: string;
-  chatContext?: {
-    collegeName?: string;
-    pageType?: string;
-  };
 }
 
 export function DashboardLayout({
   children,
   title = "Dashboard",
-  chatContext,
 }: DashboardLayoutProps) {
   const router = useRouter();
   const { currentUser, signOut } = useAuth();
-  const [chatOpen, setChatOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(true);
-  const [chatWidth, setChatWidth] = useState(400);
-  const [isResizing, setIsResizing] = useState(false);
-
-  const CHAT_MIN = 100;
-  const CHAT_MAX = 800;
-
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMove = (e: MouseEvent) => {
-      setChatWidth((w) => {
-        const delta = e.movementX;
-        const next = w - delta;
-        return Math.min(CHAT_MAX, Math.max(CHAT_MIN, next));
-      });
-    };
-
-    const handleUp = () => setIsResizing(false);
-
-    document.addEventListener("mousemove", handleMove);
-    document.addEventListener("mouseup", handleUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    return () => {
-      document.removeEventListener("mousemove", handleMove);
-      document.removeEventListener("mouseup", handleUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [isResizing]);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -157,6 +115,13 @@ export function DashboardLayout({
                   Colleges
                 </Link>
                 <Link
+                  href="/my-schools"
+                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <ListChecks className="size-4" />
+                  My Schools
+                </Link>
+                <Link
                   href="/scholarships"
                   className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                 >
@@ -217,40 +182,14 @@ export function DashboardLayout({
       <div className="flex flex-1 min-w-0">
         <main className="flex-1 overflow-auto min-w-0">
           <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center pl-6 pr-1 justify-between gap-4">
+            <div className="flex h-14 items-center px-6 justify-between gap-4">
               <h1 className="font-semibold shrink-0">{title}</h1>
               <StudentSelector />
-              <div className="flex-1 min-w-0" />
-              <AIChatDrawer
-                open={chatOpen}
-                onOpenChange={setChatOpen}
-                triggerOnly
-              />
             </div>
           </header>
 
           <div className="p-6 max-w-5xl mx-auto">{children}</div>
         </main>
-
-        {chatOpen && (
-          <>
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-valuenow={chatWidth}
-              onMouseDown={handleResizeStart}
-              className={`shrink-0 w-1.5 cursor-col-resize bg-border hover:bg-primary/30 transition-colors flex-shrink-0 ${
-                isResizing ? "bg-primary/50" : ""
-              }`}
-            />
-            <aside
-              className="shrink-0 min-h-0 border-l flex flex-col bg-background"
-              style={{ width: chatWidth }}
-            >
-              <AIChatDrawer open={chatOpen} onOpenChange={setChatOpen} context={chatContext} />
-            </aside>
-          </>
-        )}
       </div>
     </div>
   );
