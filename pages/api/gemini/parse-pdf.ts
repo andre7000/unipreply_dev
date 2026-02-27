@@ -26,7 +26,7 @@ export default async function handler(
     }
 
     // Initialize the Gemini model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Prepare the prompt for parsing college data
     const prompt = `
