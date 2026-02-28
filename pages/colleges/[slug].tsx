@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCollegeBySlug } from "@/lib/college-utils";
-import { Building2, GitCompare, DollarSign } from "lucide-react";
+import { CDSDisplay } from "@/components/colleges/CDSDisplay";
+import { GitCompare, DollarSign } from "lucide-react";
 
 export default function CollegeDetail() {
   const { currentUser, loading } = useAuth();
@@ -76,37 +77,7 @@ export default function CollegeDetail() {
         </div>
 
         {/* Common Data Set section */}
-        <Card>
-          <CardHeader>
-            <Building2 className="size-10 text-primary mb-2" />
-            <CardTitle>Common Data Set</CardTitle>
-            <CardDescription>
-              Admission stats, costs, financial aid, and outcomes from the CDS.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              CDS data will be displayed here. Sections include: Admission
-              (acceptance rate, test scores, GPA), Enrollment, First-Year Class
-              Profile, Transfer Admission, Academic Offerings, Student Life,
-              Annual Expenses, Financial Aid, Instructional Faculty, and
-              Degrees Conferred.
-            </p>
-            <div className="mt-4 p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground mb-2">
-                Placeholder structure
-              </p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Acceptance rate</li>
-                <li>Middle 50% SAT/ACT</li>
-                <li>Tuition & fees</li>
-                <li>Room & board</li>
-                <li>Avg grant/scholarship</li>
-                <li>6-year graduation rate</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+        <CDSDisplay collegeName={college.label} />
 
         {/* Scholarships section */}
         <Card>

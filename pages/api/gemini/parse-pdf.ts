@@ -3,6 +3,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../../../config/firebaseConfig";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
 // Check if API key is configured
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not configured in environment variables");
