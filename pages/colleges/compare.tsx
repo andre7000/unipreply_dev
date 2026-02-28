@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { colleges as collegeList, getUsNewsRank, getQsWorldRank, getCollegeMetadata } from "@/data/dataSource";
-import { ArrowLeft, X, Loader2, Search, Plus, Trash2, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ArrowLeft, X, Loader2, Search, Plus, Trash2, ChevronUp, ChevronDown, Check } from "lucide-react";
 
 interface CDSData {
   id: string;
@@ -338,7 +338,7 @@ export default function ComparePage() {
     setSchools((prev) => prev.filter((s) => s.value !== value));
   };
 
-  const moveSchoolLeft = (index: number) => {
+  const moveSchoolUp = (index: number) => {
     if (index <= 0) return;
     setSchools((prev) => {
       const newSchools = [...prev];
@@ -347,7 +347,7 @@ export default function ComparePage() {
     });
   };
 
-  const moveSchoolRight = (index: number) => {
+  const moveSchoolDown = (index: number) => {
     if (index >= schools.length - 1) return;
     setSchools((prev) => {
       const newSchools = [...prev];
@@ -507,45 +507,24 @@ export default function ComparePage() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium min-w-[180px] sticky left-0 bg-muted/50">
-                    Metric
+                  <th className="text-left py-2 px-3 font-medium min-w-[200px] sticky left-0 bg-muted/50 z-10">
+                    School
                   </th>
-                  {schools.map((school, index) => (
-                    <th key={school.value} className="text-left p-3 font-medium min-w-[160px]">
-                      <div className="flex items-start gap-1">
+                  {metrics.map((metric) => (
+                    <th key={metric.label} className="text-center py-2 px-2 font-medium whitespace-nowrap">
+                      <div className="text-xs text-muted-foreground font-normal">{metric.category}</div>
+                      <div>{metric.label}</div>
+                    </th>
+                  ))}
+                  {customRows.map((row) => (
+                    <th key={row.id} className="text-center py-2 px-2 font-medium whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-purple-700">{row.label}</span>
                         <button
-                          onClick={() => moveSchoolLeft(index)}
-                          disabled={index === 0}
-                          className="p-0.5 hover:bg-background rounded disabled:opacity-20 disabled:cursor-not-allowed"
-                          title="Move left"
+                          onClick={() => removeCustomRow(row.id)}
+                          className="text-red-500 hover:text-red-700 opacity-50 hover:opacity-100"
                         >
-                          <ChevronLeft className="size-4" />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <Link
-                            href={`/colleges/${school.value}`}
-                            className="hover:underline"
-                          >
-                            {school.label}
-                          </Link>
-                          {cdsDataMap[school.value]?.Common_Data_Set && (
-                            <div className="text-xs text-muted-foreground font-normal mt-0.5">
-                              CDS {cdsDataMap[school.value]?.Common_Data_Set}
-                            </div>
-                          )}
-                          {!cdsDataMap[school.value] && (
-                            <div className="text-xs text-amber-600 font-normal mt-0.5">
-                              No CDS data
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => moveSchoolRight(index)}
-                          disabled={index === schools.length - 1}
-                          className="p-0.5 hover:bg-background rounded disabled:opacity-20 disabled:cursor-not-allowed"
-                          title="Move right"
-                        >
-                          <ChevronRight className="size-4" />
+                          <Trash2 className="size-3" />
                         </button>
                       </div>
                     </th>
@@ -553,110 +532,80 @@ export default function ComparePage() {
                 </tr>
               </thead>
               <tbody>
-                {categories.map((category) => (
-                  <>
-                    <tr key={`cat-${category}`} className="bg-primary/5">
-                      <td
-                        colSpan={schools.length + 1}
-                        className="p-2 font-semibold text-primary text-xs uppercase tracking-wide"
-                      >
-                        {category}
-                      </td>
-                    </tr>
-                    {metrics
-                      .filter((m) => m.category === category)
-                      .map((metric) => (
-                          <tr key={metric.label} className="border-b hover:bg-muted/30">
-                            <td className="p-3 text-muted-foreground sticky left-0 bg-background">
-                              {metric.label}
-                            </td>
-                            {schools.map((school) => (
-                              <td key={school.value} className="p-3 font-medium">
-                                {metric.getValue(cdsDataMap[school.value], school.label) ?? (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                      ))}
-                  </>
-                ))}
-
-                {/* Custom Notes Section */}
-                {(customRows.length > 0 || schools.length > 0) && (
-                  <>
-                    <tr className="bg-purple-500/10">
-                      <td
-                        colSpan={schools.length + 1}
-                        className="p-2 font-semibold text-purple-700 text-xs uppercase tracking-wide"
-                      >
-                        Your Notes
-                      </td>
-                    </tr>
-                    {customRows.map((row) => (
-                      <tr key={row.id} className="border-b hover:bg-muted/30">
-                        <td className="p-3 text-muted-foreground sticky left-0 bg-background">
-                          <div className="flex items-center gap-2">
-                            <span>{row.label}</span>
-                            <button
-                              onClick={() => removeCustomRow(row.id)}
-                              className="text-red-500 hover:text-red-700 opacity-50 hover:opacity-100"
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </div>
-                        </td>
-                        {schools.map((school) => (
-                          <td key={school.value} className="p-2">
-                            <input
-                              type="text"
-                              value={row.values[school.value] || ""}
-                              onChange={(e) =>
-                                updateCustomRowValue(row.id, school.value, e.target.value)
-                              }
-                              placeholder="Add note..."
-                              className="w-full px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                    {/* Add new custom row */}
-                    <tr className="border-b">
-                      <td className="p-2 sticky left-0 bg-background">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={newRowLabel}
-                            onChange={(e) => setNewRowLabel(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && addCustomRow()}
-                            placeholder="Add custom row..."
-                            className="flex-1 px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                          />
+                {schools.map((school, index) => (
+                  <tr key={school.value} className="border-b hover:bg-muted/30">
+                    <td className="py-2 px-2 sticky left-0 bg-background z-10">
+                      <div className="flex items-center gap-1">
+                        <div className="flex flex-col gap-0.5">
                           <button
-                            onClick={addCustomRow}
-                            disabled={!newRowLabel.trim()}
-                            className="p-1 text-primary hover:bg-primary/10 rounded disabled:opacity-30"
+                            onClick={() => moveSchoolUp(index)}
+                            disabled={index === 0}
+                            className="p-0.5 hover:bg-muted rounded disabled:opacity-20 disabled:cursor-not-allowed"
+                            title="Move up"
                           >
-                            <Plus className="size-4" />
+                            <ChevronUp className="size-3" />
+                          </button>
+                          <button
+                            onClick={() => moveSchoolDown(index)}
+                            disabled={index === schools.length - 1}
+                            className="p-0.5 hover:bg-muted rounded disabled:opacity-20 disabled:cursor-not-allowed"
+                            title="Move down"
+                          >
+                            <ChevronDown className="size-3" />
                           </button>
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/colleges/${school.value}`}
+                            className="font-medium hover:underline"
+                          >
+                            {school.label}
+                          </Link>
+                          <div className="text-xs text-muted-foreground">
+                            {cdsDataMap[school.value]?.Common_Data_Set ? (
+                              <span>CDS {cdsDataMap[school.value]?.Common_Data_Set}</span>
+                            ) : (
+                              <span className="text-amber-600">No CDS data</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeSchool(school.value)}
+                          className="p-1 text-muted-foreground hover:text-red-500"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    </td>
+                    {metrics.map((metric) => (
+                      <td key={metric.label} className="py-1.5 px-2 text-center whitespace-nowrap">
+                        {metric.getValue(cdsDataMap[school.value], school.label) ?? (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
-                      {schools.map((school) => (
-                        <td key={school.value} className="p-2 text-muted-foreground text-sm">
-                          {/* Empty cell for new row */}
-                        </td>
-                      ))}
-                    </tr>
-                  </>
-                )}
+                    ))}
+                    {customRows.map((row) => (
+                      <td key={row.id} className="py-1 px-2">
+                        <input
+                          type="text"
+                          value={row.values[school.value] || ""}
+                          onChange={(e) =>
+                            updateCustomRowValue(row.id, school.value, e.target.value)
+                          }
+                          placeholder="..."
+                          className="w-full min-w-[80px] px-2 py-0.5 text-sm text-center border rounded bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* Quick Add Custom Rows */}
+          {/* Quick Add Custom Columns */}
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Quick add:</span>
+            <span className="text-muted-foreground">Add column:</span>
             {["Political Geography", "Campus Vibe", "Weather", "Greek Life", "Sports Culture", "Research Focus", "My Fit Score"].map((label) => (
               <button
                 key={label}
@@ -674,6 +623,23 @@ export default function ComparePage() {
                 + {label}
               </button>
             ))}
+            <div className="flex items-center gap-1 ml-2">
+              <input
+                type="text"
+                value={newRowLabel}
+                onChange={(e) => setNewRowLabel(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCustomRow()}
+                placeholder="Custom column..."
+                className="px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary focus:outline-none w-32"
+              />
+              <button
+                onClick={addCustomRow}
+                disabled={!newRowLabel.trim()}
+                className="p-1 text-primary hover:bg-primary/10 rounded disabled:opacity-30"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
           </div>
           </>
         )}
