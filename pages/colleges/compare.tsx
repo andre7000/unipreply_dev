@@ -6,7 +6,7 @@ import { db } from "@/config/firebaseConfig";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { colleges as collegeList, getUsNewsRank } from "@/data/dataSource";
+import { colleges as collegeList, getUsNewsRank, getQsWorldRank } from "@/data/dataSource";
 import { ArrowLeft, X, Loader2, Search } from "lucide-react";
 
 interface CDSData {
@@ -38,6 +38,14 @@ const metrics: CompareMetric[] = [
     category: "Rankings",
     getValue: (_d, schoolLabel) => {
       const rank = schoolLabel ? getUsNewsRank(schoolLabel) : null;
+      return rank ? `#${rank}` : null;
+    },
+  },
+  {
+    label: "QS World Rank",
+    category: "Rankings",
+    getValue: (_d, schoolLabel) => {
+      const rank = schoolLabel ? getQsWorldRank(schoolLabel) : null;
       return rank ? `#${rank}` : null;
     },
   },
