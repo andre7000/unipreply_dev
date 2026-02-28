@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCollegeBySlug } from "@/lib/college-utils";
+import { getUsNewsRank } from "@/data/dataSource";
 import { CDSDisplay } from "@/components/colleges/CDSDisplay";
-import { GitCompare, DollarSign } from "lucide-react";
+import { GitCompare, DollarSign, Trophy } from "lucide-react";
 
 export default function CollegeDetail() {
   const { currentUser, loading } = useAuth();
@@ -22,6 +23,8 @@ export default function CollegeDetail() {
 
   const college =
     typeof slug === "string" ? getCollegeBySlug(slug) : undefined;
+  
+  const usNewsRank = college ? getUsNewsRank(college.label) : null;
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -57,19 +60,23 @@ export default function CollegeDetail() {
         {/* Header with high-level info */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {college.label}
-            </h1>
-            <p className="text-muted-foreground mt-1">
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {college.label}
+              </h1>
+              {usNewsRank && (
+                <div className="flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-semibold">
+                  <Trophy className="size-4" />
+                  #{usNewsRank} US News
+                </div>
+              )}
+            </div>
+            <p className="text-muted-foreground">
               {college.conference} • Research university
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              More detailed info (location, size, type) coming soon. Data will be
-              populated from Common Data Set.
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/colleges">
+            <Link href={`/colleges/compare?add=${college.value}`}>
               <GitCompare className="size-4" />
               Compare Schools
             </Link>
