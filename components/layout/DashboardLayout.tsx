@@ -15,6 +15,7 @@ import {
   ChevronRight,
   MessageCircle,
   ListChecks,
+  GitCompareArrows,
 } from "lucide-react";
 import { StudentSelector } from "@/components/StudentSelector";
 
@@ -112,6 +113,13 @@ export function DashboardLayout({
                 >
                   <Building2 className="size-4" />
                   Colleges
+                </Link>
+                <Link
+                  href="/colleges/compare"
+                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <GitCompareArrows className="size-4" />
+                  Compare
                 </Link>
                 <Link
                   href="/my-schools"

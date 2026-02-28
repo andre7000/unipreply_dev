@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { colleges as collegeList, getUsNewsRank, getQsWorldRank, getCollegeMetadata } from "@/data/dataSource";
-import { ArrowLeft, X, Loader2, Search, Plus, Trash2, ChevronUp, ChevronDown, Check, Database } from "lucide-react";
+import { X, Loader2, Search, Plus, Trash2, ChevronUp, ChevronDown, Check, Database } from "lucide-react";
 
 interface CDSData {
   id: string;
@@ -487,13 +487,7 @@ export default function ComparePage() {
     <DashboardLayout title="Compare Schools">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/colleges">
-              <ArrowLeft className="size-4" />
-              Back
-            </Link>
-          </Button>
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Compare Schools</h1>
           {saving && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
