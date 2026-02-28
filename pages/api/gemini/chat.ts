@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../config/firebaseConfig';
+import { colleges as collegeList } from '../../../data/dataSource';
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error('GEMINI_API_KEY is not configured in environment variables');
@@ -39,6 +40,136 @@ async function fetchCollegeCDS(collegeName: string): Promise<any | null> {
     console.error('Error fetching CDS data:', error);
     return null;
   }
+}
+
+// Find college ID from name
+function findCollegeId(collegeName: string): string | null {
+  const normalizedName = collegeName.toLowerCase().trim()
+    .replace(/^university of /i, '')
+    .replace(/^uc /i, '')
+    .replace(/ university$/i, '')
+    .replace(/ college$/i, '')
+    .trim();
+  
+  for (const college of collegeList) {
+    const label = college.label.toLowerCase();
+    const value = college.value.toLowerCase();
+    
+    // Exact match
+    if (label === normalizedName || value === normalizedName) {
+      console.log(`Exact match: ${collegeName} -> ${college.value}`);
+      return college.value;
+    }
+    
+    // Partial match - check if search term is in label/value or vice versa
+    if (label.includes(normalizedName) || 
+        normalizedName.includes(label) ||
+        value.includes(normalizedName) ||
+        normalizedName.includes(value)) {
+      console.log(`Partial match: ${collegeName} -> ${college.value}`);
+      return college.value;
+    }
+  }
+  console.log(`No college match found for: ${collegeName} (normalized: ${normalizedName})`);
+  return null;
+}
+
+// Fetch scholarships for a college from Firestore
+async function fetchCollegeScholarships(collegeName: string): Promise<any[]> {
+  try {
+    const collegeId = findCollegeId(collegeName);
+    console.log(`Fetching scholarships for collegeId: ${collegeId}`);
+    
+    const scholarshipsRef = collection(db, 'scholarships');
+    
+    if (collegeId) {
+      // Try exact match first
+      const q = query(scholarshipsRef, where('collegeId', '==', collegeId));
+      const snapshot = await getDocs(q);
+      console.log(`Found ${snapshot.docs.length} scholarships for ${collegeId}`);
+      
+      if (snapshot.docs.length > 0) {
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      }
+    }
+    
+    // Fallback: search by collegeName field
+    const allSnapshot = await getDocs(scholarshipsRef);
+    const normalizedSearch = collegeName.toLowerCase();
+    const matches = allSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      const docCollegeName = (data.collegeName || '').toLowerCase();
+      const docCollegeId = (data.collegeId || '').toLowerCase();
+      return docCollegeName.includes(normalizedSearch) || 
+             normalizedSearch.includes(docCollegeName.split(' ')[0]) ||
+             docCollegeId.includes(normalizedSearch.replace(/\s+/g, '-'));
+    });
+    
+    console.log(`Fallback found ${matches.length} scholarships for ${collegeName}`);
+    return matches.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error fetching scholarships:', error);
+    return [];
+  }
+}
+
+// Format scholarships for the AI prompt
+function formatScholarshipsForPrompt(scholarships: any[], collegeName: string): string {
+  if (scholarships.length === 0) {
+    return `No scholarships found in our database for ${collegeName}. The school may offer scholarships not yet added to our system.`;
+  }
+  
+  const sections: string[] = [`Found ${scholarships.length} scholarship(s) for ${collegeName}:\n`];
+  
+  for (const scholarship of scholarships) {
+    // Try different possible field names
+    const name = scholarship.metadata?.name || scholarship.metadata?.scholarshipName || scholarship.name || 'Unnamed Scholarship';
+    const amount = scholarship.metadata?.amount || scholarship.amount;
+    const deadline = scholarship.metadata?.deadline || scholarship.deadline;
+    const eligibility = scholarship.metadata?.eligibility || scholarship.eligibility;
+    
+    sections.push(`- Name: ${name}`);
+    if (amount) {
+      sections.push(`  Amount: ${amount}`);
+    }
+    if (deadline) {
+      sections.push(`  Deadline: ${deadline}`);
+    }
+    if (eligibility) {
+      const eligText = Array.isArray(eligibility) ? eligibility.join(', ') : eligibility;
+      sections.push(`  Eligibility: ${eligText}`);
+    }
+    if (scholarship.scholarshipType) {
+      sections.push(`  Type: ${scholarship.scholarshipType}`);
+    }
+    if (scholarship.studentType && scholarship.studentType !== 'both') {
+      sections.push(`  For: ${scholarship.studentType === 'first-year' ? 'First-year students' : 'Transfer students'}`);
+    }
+    if (scholarship.sourceUrl) {
+      sections.push(`  More info: ${scholarship.sourceUrl}`);
+    }
+    if (scholarship.rawText) {
+      // Include a snippet of raw text for context
+      const snippet = scholarship.rawText.slice(0, 300).replace(/\n/g, ' ');
+      sections.push(`  Details: ${snippet}...`);
+    }
+    sections.push('');
+  }
+  
+  return sections.join('\n');
+}
+
+// Check if message is asking about scholarships
+function isAskingAboutScholarships(message: string): boolean {
+  const scholarshipKeywords = ['scholarship', 'scholarships', 'financial aid', 'merit aid', 'grant', 'grants', 'funding', 'tuition assistance'];
+  const lowerMessage = message.toLowerCase();
+  return scholarshipKeywords.some(keyword => lowerMessage.includes(keyword));
 }
 
 // Format CDS data for inclusion in the AI prompt
@@ -117,20 +248,38 @@ function formatCDSForPrompt(data: any): string {
 // Extract school names mentioned in the message for comparison
 function extractSchoolNames(message: string): string[] {
   const schools: string[] = [];
+  const lowerMessage = message.toLowerCase();
+  
+  // Pattern for "University of X" or "X University"
+  const uniOfPattern = /university\s+of\s+([\w\s]+?)(?:\s+have|\s+offer|\?|,|\.|\s+scholarship|\s+and|$)/gi;
+  const uniPattern = /([\w\s]+?)\s+university(?:\s+have|\s+offer|\?|,|\.|\s+scholarship|\s+and|$)/gi;
+  
+  for (const match of message.matchAll(uniOfPattern)) {
+    if (match[1]) schools.push(match[1].trim());
+  }
+  for (const match of message.matchAll(uniPattern)) {
+    if (match[1] && match[1].length < 30) schools.push(match[1].trim());
+  }
   
   // Common patterns for comparisons
   const vsPattern = /(\w+(?:\s+\w+)?)\s+(?:vs\.?|versus|compared to|or)\s+(\w+(?:\s+\w+)?)/gi;
-  const matches = message.matchAll(vsPattern);
+  const vsMatches = message.matchAll(vsPattern);
   
-  for (const match of matches) {
+  for (const match of vsMatches) {
     if (match[1]) schools.push(match[1].trim());
     if (match[2]) schools.push(match[2].trim());
   }
   
   // Also look for known university names
-  const knownSchools = ['yale', 'brown', 'harvard', 'princeton', 'columbia', 'cornell', 'dartmouth', 'penn', 'stanford', 'mit', 'duke', 'northwestern', 'berkeley', 'ucla'];
+  const knownSchools = [
+    'yale', 'brown', 'harvard', 'princeton', 'columbia', 'cornell', 'dartmouth', 'penn', 
+    'stanford', 'mit', 'duke', 'northwestern', 'berkeley', 'ucla', 'usc', 'nyu',
+    'washington', 'michigan', 'texas', 'florida', 'ohio state', 'georgia', 'virginia',
+    'notre dame', 'vanderbilt', 'rice', 'emory', 'georgetown', 'carnegie mellon', 'johns hopkins',
+    'uw', 'cal', 'purdue', 'illinois', 'wisconsin', 'maryland', 'rutgers', 'arizona'
+  ];
   for (const school of knownSchools) {
-    if (message.toLowerCase().includes(school) && !schools.some(s => s.toLowerCase().includes(school))) {
+    if (lowerMessage.includes(school) && !schools.some(s => s.toLowerCase().includes(school))) {
       schools.push(school);
     }
   }
@@ -184,8 +333,19 @@ export default async function handler(
       }
     }
 
+    // Check if asking about scholarships and fetch if needed
+    const askingAboutScholarships = isAskingAboutScholarships(lastUserMessage);
+    const scholarshipsMap: Record<string, any[]> = {};
+    
+    if (askingAboutScholarships) {
+      for (const school of schoolsToCompare.slice(0, 3)) {
+        const scholarships = await fetchCollegeScholarships(school);
+        scholarshipsMap[school] = scholarships;
+      }
+    }
+
     // Build system context
-    let systemPrompt = `You are UniPreply Advisor, a helpful AI assistant for college admissions. You help students and parents navigate the college application process, understand admissions data, compare schools, and make informed decisions.
+    let systemPrompt = `You are Unipreply Advisor, a helpful AI assistant for college admissions. You help students and parents navigate the college application process, understand admissions data, compare schools, and make informed decisions.
 
 Be concise, friendly, and informative. When discussing specific colleges, use the Common Data Set (CDS) data provided below. If data is not available for a school, acknowledge that.
 
@@ -214,8 +374,33 @@ SAT Middle 50%    | 1480-1560| 1510-1560
         systemPrompt += formatCDSForPrompt(data);
       }
       systemPrompt += `\n=== END CDS DATA ===`;
-    } else if (schoolsToCompare.length > 0) {
+    } else if (schoolsToCompare.length > 0 && !askingAboutScholarships) {
       systemPrompt += `\n\nNote: No CDS data is currently available in the database for the mentioned schools. You can provide general information but note that specific statistics may not be current.`;
+    }
+
+    // Add scholarship data if user is asking about scholarships
+    if (askingAboutScholarships && Object.keys(scholarshipsMap).length > 0) {
+      systemPrompt += `\n\n=== SCHOLARSHIP INFORMATION ===\n`;
+      for (const [school, scholarships] of Object.entries(scholarshipsMap)) {
+        systemPrompt += formatScholarshipsForPrompt(scholarships, school);
+      }
+      systemPrompt += `\n=== END SCHOLARSHIP DATA ===`;
+      systemPrompt += `\n\nIMPORTANT FORMATTING for scholarship responses:
+1. Start with a brief intro sentence
+2. Then show each scholarship in a clearly separated block using this format:
+
+---
+SCHOLARSHIP: [Name]
+Amount: [amount]
+Deadline: [deadline]
+Eligibility: [requirements]
+Type: [scholarship type]
+More Info: [URL]
+---
+
+3. Use the dashed lines (---) to create visual separation between scholarships
+4. Always include the source URL at the end
+5. Keep the scholarship data visually distinct from your commentary`;
     }
 
     // Convert messages to Gemini format

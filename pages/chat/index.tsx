@@ -139,7 +139,7 @@ export default function ChatPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">UniPreply Advisor</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Unipreply Advisor</h1>
             <p className="text-muted-foreground">
               Ask questions about colleges, admissions, scholarships, and more.
             </p>

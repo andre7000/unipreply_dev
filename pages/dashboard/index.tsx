@@ -12,11 +12,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Search, BookOpen, User } from "lucide-react";
+import { GraduationCap, Search, MessageCircle } from "lucide-react";
 
 export default function Dashboard() {
   const { currentUser, loading } = useAuth();
-  const { profile, loading: profileLoading } = useUserProfile(currentUser);
+  const { profile } = useUserProfile(currentUser);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,30 +33,9 @@ export default function Dashboard() {
     );
   }
 
-  const needsProfile = !profileLoading && !profile;
-
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {needsProfile && (
-          <Card className="border-primary/50 bg-primary/5">
-            <CardContent className="flex items-center justify-between gap-4 pt-6">
-              <div className="flex items-center gap-3">
-                <User className="size-5 text-primary" />
-                <div>
-                  <p className="font-medium">Complete your profile</p>
-                  <p className="text-sm text-muted-foreground">
-                    Set your account type and display name to get the most out
-                    of Unipreply.
-                  </p>
-                </div>
-              </div>
-              <Button asChild>
-                <Link href="/profile">Set up profile</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
             Welcome back{profile?.displayName ? `, ${profile.displayName}` : ""}
@@ -77,8 +56,8 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild disabled>
-                <Link href="#">Coming Soon</Link>
+              <Button asChild>
+                <Link href="/colleges">Explore Colleges</Link>
               </Button>
             </CardContent>
           </Card>
@@ -93,24 +72,24 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild disabled>
-                <Link href="#">Coming Soon</Link>
+              <Button asChild>
+                <Link href="/scholarships">Find Scholarships</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <BookOpen className="size-10 text-primary mb-2" />
-              <CardTitle>My Research</CardTitle>
+              <MessageCircle className="size-10 text-primary mb-2" />
+              <CardTitle>AI Assistant</CardTitle>
               <CardDescription>
-                Save colleges and scholarships. Build your list and compare side
-                by side.
+                Chat with our AI to get personalized college recommendations and
+                research help.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button asChild disabled>
-                <Link href="#">Coming Soon</Link>
+              <Button asChild>
+                <Link href="/chat">Start Chat</Link>
               </Button>
             </CardContent>
           </Card>

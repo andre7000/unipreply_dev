@@ -109,6 +109,42 @@ export const collegeMetadata: Record<string, CollegeMetadata> = {
   "Temple": { type: "public", city: "Philadelphia", state: "PA" },
   "Tulane": { type: "private", city: "New Orleans", state: "LA" },
   "Memphis": { type: "public", city: "Memphis", state: "TN" },
+  // Batch 1: Elite Private Universities
+  "Washington University in St. Louis": { type: "private", city: "St. Louis", state: "MO" },
+  "University of Chicago": { type: "private", city: "Chicago", state: "IL" },
+  "Johns Hopkins": { type: "private", city: "Baltimore", state: "MD" },
+  "Emory": { type: "private", city: "Atlanta", state: "GA" },
+  "Tufts": { type: "private", city: "Medford", state: "MA" },
+  "University of Rochester": { type: "private", city: "Rochester", state: "NY" },
+  "Case Western Reserve": { type: "private", city: "Cleveland", state: "OH" },
+  "Brandeis": { type: "private", city: "Waltham", state: "MA" },
+  "Boston University": { type: "private", city: "Boston", state: "MA" },
+  "Northeastern": { type: "private", city: "Boston", state: "MA" },
+  // Batch 2: Top Liberal Arts Colleges
+  "Williams": { type: "private", city: "Williamstown", state: "MA" },
+  "Amherst": { type: "private", city: "Amherst", state: "MA" },
+  "Swarthmore": { type: "private", city: "Swarthmore", state: "PA" },
+  "Wellesley": { type: "private", city: "Wellesley", state: "MA" },
+  "Pomona": { type: "private", city: "Claremont", state: "CA" },
+  "Bowdoin": { type: "private", city: "Brunswick", state: "ME" },
+  "Middlebury": { type: "private", city: "Middlebury", state: "VT" },
+  "Carleton": { type: "private", city: "Northfield", state: "MN" },
+  "Claremont McKenna": { type: "private", city: "Claremont", state: "CA" },
+  "Davidson": { type: "private", city: "Davidson", state: "NC" },
+  "Colby": { type: "private", city: "Waterville", state: "ME" },
+  "Hamilton": { type: "private", city: "Clinton", state: "NY" },
+  "Colgate": { type: "private", city: "Hamilton", state: "NY" },
+  "Haverford": { type: "private", city: "Haverford", state: "PA" },
+  "Vassar": { type: "private", city: "Poughkeepsie", state: "NY" },
+  "Grinnell": { type: "private", city: "Grinnell", state: "IA" },
+  "Washington and Lee": { type: "private", city: "Lexington", state: "VA" },
+  // Batch 3: Tech-Focused Schools
+  "Caltech": { type: "private", city: "Pasadena", state: "CA" },
+  "Harvey Mudd": { type: "private", city: "Claremont", state: "CA" },
+  "RPI": { type: "private", city: "Troy", state: "NY" },
+  "WPI": { type: "private", city: "Worcester", state: "MA" },
+  "Stevens Institute": { type: "private", city: "Hoboken", state: "NJ" },
+  "Rose-Hulman": { type: "private", city: "Terre Haute", state: "IN" },
 };
 
 export function getCollegeMetadata(collegeName: string): CollegeMetadata | null {
@@ -193,6 +229,18 @@ export const qsWorldRankings: Record<string, number> = {
   "Missouri": 425,
   "LSU": 445,
   "South Carolina": 468,
+  // Batch 1: Elite Private Universities
+  "University of Chicago": 11,
+  "Johns Hopkins": 15,
+  "Washington University in St. Louis": 90,
+  "Emory": 76,
+  "Tufts": 227,
+  "Boston University": 78,
+  "Northeastern": 175,
+  "Case Western Reserve": 189,
+  "University of Rochester": 196,
+  // Batch 3: Tech Schools
+  "Caltech": 10,
 };
 
 // Helper function to get QS World ranking
@@ -290,6 +338,24 @@ export const usNewsRankings: Record<string, number> = {
   "Houston": 135,
   "UCF": 151,
   "Louisville": 160,
+  // Batch 1: Elite Private Universities
+  "Washington University in St. Louis": 24,
+  "University of Chicago": 12,
+  "Johns Hopkins": 9,
+  "Emory": 24,
+  "Tufts": 40,
+  "University of Rochester": 47,
+  "Case Western Reserve": 45,
+  "Brandeis": 60,
+  "Boston University": 43,
+  "Northeastern": 53,
+  // Batch 3: Tech Schools
+  "Caltech": 6,
+  "Harvey Mudd": 23, // Liberal arts ranking but highly ranked
+  "RPI": 60,
+  "WPI": 76,
+  "Stevens Institute": 76,
+  "Rose-Hulman": 1, // #1 in engineering schools without PhD
 };
 
 // Helper function to get ranking
@@ -309,11 +375,10 @@ export const conferencesData = [
   { value: "Mountain West", label: "Mountain West", image: "mountain_west" },
   { value: "Sun Belt", label: "Sun Belt", image: "sunbelt" },
   { value: "Ivy League", label: "Ivy League", image: "ivy_league" },
-  {
-    value: "FBS Independents",
-    label: "FBS Independents",
-    image: "fbsi",
-  },
+  { value: "FBS Independents", label: "FBS Independents", image: "fbsi" },
+  { value: "Elite Private", label: "Elite Private", image: "elite_private" },
+  { value: "Liberal Arts", label: "Liberal Arts", image: "liberal_arts" },
+  { value: "Tech Schools", label: "Tech Schools", image: "tech_schools" },
 ];
 
 export const colleges = [
@@ -1010,6 +1075,42 @@ export const colleges = [
     conference: "Ivy League",
   },
   { label: "Yale", value: "Yale", image: "yale", conference: "Ivy League" },
+  // Batch 1: Elite Private Universities
+  { label: "Washington University in St. Louis", value: "Washington University in St. Louis", image: "washu", conference: "Elite Private" },
+  { label: "University of Chicago", value: "University of Chicago", image: "uchicago", conference: "Elite Private" },
+  { label: "Johns Hopkins", value: "Johns Hopkins", image: "johns_hopkins", conference: "Elite Private" },
+  { label: "Emory", value: "Emory", image: "emory", conference: "Elite Private" },
+  { label: "Tufts", value: "Tufts", image: "tufts", conference: "Elite Private" },
+  { label: "University of Rochester", value: "University of Rochester", image: "rochester", conference: "Elite Private" },
+  { label: "Case Western Reserve", value: "Case Western Reserve", image: "case_western", conference: "Elite Private" },
+  { label: "Brandeis", value: "Brandeis", image: "brandeis", conference: "Elite Private" },
+  { label: "Boston University", value: "Boston University", image: "boston_university", conference: "Elite Private" },
+  { label: "Northeastern", value: "Northeastern", image: "northeastern", conference: "Elite Private" },
+  // Batch 2: Top Liberal Arts Colleges
+  { label: "Williams", value: "Williams", image: "williams", conference: "Liberal Arts" },
+  { label: "Amherst", value: "Amherst", image: "amherst", conference: "Liberal Arts" },
+  { label: "Swarthmore", value: "Swarthmore", image: "swarthmore", conference: "Liberal Arts" },
+  { label: "Wellesley", value: "Wellesley", image: "wellesley", conference: "Liberal Arts" },
+  { label: "Pomona", value: "Pomona", image: "pomona", conference: "Liberal Arts" },
+  { label: "Bowdoin", value: "Bowdoin", image: "bowdoin", conference: "Liberal Arts" },
+  { label: "Middlebury", value: "Middlebury", image: "middlebury", conference: "Liberal Arts" },
+  { label: "Carleton", value: "Carleton", image: "carleton", conference: "Liberal Arts" },
+  { label: "Claremont McKenna", value: "Claremont McKenna", image: "cmc", conference: "Liberal Arts" },
+  { label: "Davidson", value: "Davidson", image: "davidson", conference: "Liberal Arts" },
+  { label: "Colby", value: "Colby", image: "colby", conference: "Liberal Arts" },
+  { label: "Hamilton", value: "Hamilton", image: "hamilton", conference: "Liberal Arts" },
+  { label: "Colgate", value: "Colgate", image: "colgate", conference: "Liberal Arts" },
+  { label: "Haverford", value: "Haverford", image: "haverford", conference: "Liberal Arts" },
+  { label: "Vassar", value: "Vassar", image: "vassar", conference: "Liberal Arts" },
+  { label: "Grinnell", value: "Grinnell", image: "grinnell", conference: "Liberal Arts" },
+  { label: "Washington and Lee", value: "Washington and Lee", image: "wlu", conference: "Liberal Arts" },
+  // Batch 3: Tech-Focused Schools
+  { label: "Caltech", value: "Caltech", image: "caltech", conference: "Tech Schools" },
+  { label: "Harvey Mudd", value: "Harvey Mudd", image: "harvey_mudd", conference: "Tech Schools" },
+  { label: "RPI", value: "RPI", image: "rpi", conference: "Tech Schools" },
+  { label: "WPI", value: "WPI", image: "wpi", conference: "Tech Schools" },
+  { label: "Stevens Institute", value: "Stevens Institute", image: "stevens", conference: "Tech Schools" },
+  { label: "Rose-Hulman", value: "Rose-Hulman", image: "rose_hulman", conference: "Tech Schools" },
 ];
 
 export const durations = [
@@ -1238,6 +1339,60 @@ export const conferences = [
         "Pennsylvania",
         "Princeton",
         "Yale",
+      ].includes(college.value),
+    ),
+  },
+  {
+    name: "Elite Private",
+    colleges: colleges.filter((college) =>
+      [
+        "Washington University in St. Louis",
+        "University of Chicago",
+        "Johns Hopkins",
+        "Emory",
+        "Tufts",
+        "University of Rochester",
+        "Case Western Reserve",
+        "Brandeis",
+        "Boston University",
+        "Northeastern",
+      ].includes(college.value),
+    ),
+  },
+  {
+    name: "Liberal Arts",
+    colleges: colleges.filter((college) =>
+      [
+        "Williams",
+        "Amherst",
+        "Swarthmore",
+        "Wellesley",
+        "Pomona",
+        "Bowdoin",
+        "Middlebury",
+        "Carleton",
+        "Claremont McKenna",
+        "Davidson",
+        "Colby",
+        "Hamilton",
+        "Colgate",
+        "Haverford",
+        "Vassar",
+        "Grinnell",
+        "Washington and Lee",
+      ].includes(college.value),
+    ),
+  },
+  {
+    name: "Tech Schools",
+    colleges: colleges.filter((college) =>
+      [
+        "Caltech",
+        "Harvey Mudd",
+        "RPI",
+        "WPI",
+        "Stevens Institute",
+        "Rose-Hulman",
       ].includes(college.value),
     ),
   },

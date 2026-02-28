@@ -73,6 +73,14 @@ a {
   text-decoration: none;
 }
 
+/* Ensure button text is white on primary buttons */
+[data-slot="button"][data-variant="default"] {
+  color: white !important;
+}
+[data-slot="button"][data-variant="default"] svg {
+  color: white !important;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

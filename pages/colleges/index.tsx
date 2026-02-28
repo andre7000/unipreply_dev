@@ -13,10 +13,14 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { conferences, colleges, getUsNewsRank } from "@/data/dataSource";
-import { Building2, Trophy } from "lucide-react";
+import { Building2, Trophy, GitCompareArrows } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const CONFERENCE_ORDER = [
   "Ivy League",
+  "Elite Private",
+  "Liberal Arts",
+  "Tech Schools",
   "ACC",
   "Big Ten",
   "Big 12",
@@ -81,11 +85,19 @@ export default function Colleges() {
   return (
     <DashboardLayout title="Colleges">
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Colleges</h2>
-          <p className="text-muted-foreground">
-            Browse colleges by conference or national ranking.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Colleges</h2>
+            <p className="text-muted-foreground">
+              Browse colleges by conference or national ranking.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/colleges/compare">
+              <GitCompareArrows className="size-4 mr-2" />
+              Compare Schools
+            </Link>
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

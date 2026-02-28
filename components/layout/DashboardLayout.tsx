@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   GraduationCap,
   LayoutDashboard,
-  User,
   LogOut,
   UserCircle,
   Settings,
@@ -138,13 +137,6 @@ export function DashboardLayout({
               </div>
               <div className="flex-1" />
               <div className="space-y-1 pt-4 border-t">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-                >
-                  <User className="size-4" />
-                  Profile
-                </Link>
                 <Link
                   href="/account"
                   className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
