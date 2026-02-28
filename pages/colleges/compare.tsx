@@ -149,6 +149,7 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const handledAddParam = useRef<string | null>(null);
 
   // Handle URL param to add school (only once per param value)
@@ -227,6 +228,29 @@ export default function ComparePage() {
     if (schools.some((s) => s.value === college.value)) return;
     setSchools((prev) => [...prev, college]);
     setSearchQuery("");
+    setHighlightedIndex(0);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredColleges.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => 
+        prev < filteredColleges.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filteredColleges[highlightedIndex]) {
+        addSchool(filteredColleges[highlightedIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setSearchFocused(false);
+      setSearchQuery("");
+    }
   };
 
   const removeSchool = (value: string) => {
@@ -243,6 +267,10 @@ export default function ComparePage() {
       )
       .slice(0, 8);
   }, [searchQuery, schools]);
+
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [searchQuery]);
 
   const categories = [...new Set(metrics.map((m) => m.category))];
 
@@ -300,15 +328,20 @@ export default function ComparePage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                onKeyDown={handleSearchKeyDown}
                 className="w-full pl-10 pr-4 py-2 border rounded-md text-sm bg-background"
               />
               {searchFocused && filteredColleges.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
-                  {filteredColleges.map((college) => (
+                  {filteredColleges.map((college, index) => (
                     <button
                       key={college.value}
                       onClick={() => addSchool(college)}
-                      className="w-full text-left px-4 py-2 hover:bg-muted text-sm"
+                      className={`w-full text-left px-4 py-2 text-sm ${
+                        index === highlightedIndex
+                          ? "bg-muted"
+                          : "hover:bg-muted"
+                      }`}
                     >
                       {college.label}
                     </button>
