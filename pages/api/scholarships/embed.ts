@@ -15,9 +15,15 @@ interface ScholarshipMetadata {
 }
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-  const result = await model.embedContent(text);
-  return result.embedding.values;
+  const model = genAI.getGenerativeModel({ model: "models/text-embedding-004" });
+  try {
+    const result = await model.embedContent(text);
+    return result.embedding.values;
+  } catch (embeddingError) {
+    console.error("Embedding API failed, using fallback:", embeddingError);
+    // Fallback: return empty array if embedding not available
+    return [];
+  }
 }
 
 async function extractMetadata(text: string): Promise<ScholarshipMetadata> {
@@ -60,10 +66,14 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { text } = req.body;
+  const { text, collegeId, collegeName, sourceUrl, studentType } = req.body;
 
   if (!text || typeof text !== "string" || text.trim().length < 10) {
     return res.status(400).json({ error: "Please provide scholarship text (at least 10 characters)" });
+  }
+
+  if (!collegeId) {
+    return res.status(400).json({ error: "Please provide a collegeId" });
   }
 
   try {
@@ -80,8 +90,12 @@ export default async function handler(
       eligibility: metadata.eligibility || [],
       url: metadata.url || null,
       organization: metadata.organization || null,
+      collegeId: collegeId,
+      collegeName: collegeName || null,
+      sourceUrl: sourceUrl || null,
+      studentType: studentType || "both",
       embedding: embedding,
-      embeddingModel: "text-embedding-004",
+      embeddingModel: embedding.length > 0 ? "text-embedding-004" : null,
       createdAt: serverTimestamp(),
     };
 
@@ -92,6 +106,7 @@ export default async function handler(
       docId: docRef.id,
       metadata,
       embeddingDimension: embedding.length,
+      embeddingAvailable: embedding.length > 0,
     });
   } catch (err) {
     console.error("Scholarship embed error:", err);

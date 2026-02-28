@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Loader2, CheckCircle, AlertCircle, RefreshCw, FileText } from 'lucide-react';
+import { Upload, Loader2, CheckCircle, AlertCircle, RefreshCw, FileText, Link as LinkIcon } from 'lucide-react';
+import { colleges as collegeList } from '@/data/dataSource';
 
 interface UploadStatus {
   status: 'idle' | 'uploading' | 'processing' | 'success' | 'error';
@@ -22,6 +23,9 @@ export default function AdminPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [scholarshipText, setScholarshipText] = useState('');
   const [scholarshipStatus, setScholarshipStatus] = useState<ScholarshipStatus>({ status: 'idle' });
+  const [selectedCollege, setSelectedCollege] = useState('');
+  const [scholarshipUrl, setScholarshipUrl] = useState('');
+  const [studentType, setStudentType] = useState<'first-year' | 'transfer' | 'both'>('both');
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -133,13 +137,29 @@ export default function AdminPage() {
       return;
     }
 
+    if (!selectedCollege) {
+      setScholarshipStatus({
+        status: 'error',
+        message: 'Please select a college for this scholarship.',
+      });
+      return;
+    }
+
     setScholarshipStatus({ status: 'processing', message: 'Generating embeddings and extracting metadata...' });
+
+    const college = collegeList.find(c => c.value === selectedCollege);
 
     try {
       const response = await fetch('/api/scholarships/embed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: scholarshipText }),
+        body: JSON.stringify({ 
+          text: scholarshipText,
+          collegeId: selectedCollege,
+          collegeName: college?.label || selectedCollege,
+          sourceUrl: scholarshipUrl || null,
+          studentType,
+        }),
       });
 
       const data = await response.json();
@@ -150,10 +170,11 @@ export default function AdminPage() {
 
       setScholarshipStatus({
         status: 'success',
-        message: `Saved! Doc ID: ${data.docId} | Embedding: ${data.embeddingDimension} dimensions`,
+        message: `Saved! Doc ID: ${data.docId}${data.embeddingAvailable ? ` | Embedding: ${data.embeddingDimension} dimensions` : ' (no embedding)'}`,
         metadata: data.metadata,
       });
       setScholarshipText('');
+      setScholarshipUrl('');
     } catch (err) {
       setScholarshipStatus({
         status: 'error',
@@ -284,18 +305,63 @@ export default function AdminPage() {
             </ul>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">College *</label>
+              <select
+                value={selectedCollege}
+                onChange={(e) => setSelectedCollege(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                disabled={scholarshipStatus.status === 'processing'}
+              >
+                <option value="">Select a college...</option>
+                {collegeList.map((college) => (
+                  <option key={college.value} value={college.value}>
+                    {college.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Student Type</label>
+              <select
+                value={studentType}
+                onChange={(e) => setStudentType(e.target.value as 'first-year' | 'transfer' | 'both')}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                disabled={scholarshipStatus.status === 'processing'}
+              >
+                <option value="both">Both (First-year & Transfer)</option>
+                <option value="first-year">First-year only</option>
+                <option value="transfer">Transfer only</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <span className="flex items-center gap-1">
+                <LinkIcon className="w-4 h-4" />
+                Source URL (optional)
+              </span>
+            </label>
+            <input
+              type="url"
+              value={scholarshipUrl}
+              onChange={(e) => setScholarshipUrl(e.target.value)}
+              placeholder="https://admit.washington.edu/costs/scholarships/"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              disabled={scholarshipStatus.status === 'processing'}
+            />
+          </div>
+
           <textarea
             value={scholarshipText}
             onChange={(e) => setScholarshipText(e.target.value)}
             placeholder="Paste scholarship information here...
 
 Example:
-Gates Scholarship
-Full-tuition scholarship for exceptional minority students.
-Amount: Full cost of attendance
-Deadline: September 15, 2026
-Eligibility: High school seniors, Pell Grant eligible, minimum 3.3 GPA
-Apply at: thegatesscholarship.org"
+Presidential Scholar
+The Presidential Scholarship is a $10,000 award given to selected Washington residents who show exceptional leadership, community engagement and promise. It is renewable for up to four years. Washington residents are considered automatically with their application to the UW."
             className="w-full h-48 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
             disabled={scholarshipStatus.status === 'processing'}
           />

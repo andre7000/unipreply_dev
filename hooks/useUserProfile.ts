@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/config/firebaseConfig";
-import { createDefaultWorkspace } from "@/lib/workspace";
+import { ensureWorkspaceForUser } from "@/lib/workspace";
 import type { User } from "firebase/auth";
 import type { UserProfile, UserType } from "@/types/profile";
 
@@ -74,11 +74,7 @@ export function useUserProfile(user: User | null): UseUserProfileReturn {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      await createDefaultWorkspace(
-        user.uid,
-        userType,
-        profileData.displayName
-      );
+      await ensureWorkspaceForUser(user.uid, profileData.displayName);
       setProfileState({ uid: user.uid, ...profileData });
     } catch (err) {
       console.error("Error creating profile:", err);
