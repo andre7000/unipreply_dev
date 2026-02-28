@@ -1,3 +1,120 @@
+// College Metadata (type, city, state)
+export interface CollegeMetadata {
+  type: "public" | "private";
+  city: string;
+  state: string;
+}
+
+export const collegeMetadata: Record<string, CollegeMetadata> = {
+  // ACC
+  "Boston College": { type: "private", city: "Chestnut Hill", state: "MA" },
+  "Clemson": { type: "public", city: "Clemson", state: "SC" },
+  "Duke": { type: "private", city: "Durham", state: "NC" },
+  "Florida State": { type: "public", city: "Tallahassee", state: "FL" },
+  "Georgia Tech": { type: "public", city: "Atlanta", state: "GA" },
+  "Louisville": { type: "public", city: "Louisville", state: "KY" },
+  "Miami": { type: "private", city: "Coral Gables", state: "FL" },
+  "NC State": { type: "public", city: "Raleigh", state: "NC" },
+  "North Carolina": { type: "public", city: "Chapel Hill", state: "NC" },
+  "Pittsburgh": { type: "public", city: "Pittsburgh", state: "PA" },
+  "Syracuse": { type: "private", city: "Syracuse", state: "NY" },
+  "Virginia": { type: "public", city: "Charlottesville", state: "VA" },
+  "Virginia Tech": { type: "public", city: "Blacksburg", state: "VA" },
+  "Wake Forest": { type: "private", city: "Winston-Salem", state: "NC" },
+  "Cal": { type: "public", city: "Berkeley", state: "CA" },
+  "SMU": { type: "private", city: "Dallas", state: "TX" },
+  "Stanford": { type: "private", city: "Stanford", state: "CA" },
+  // Big 12
+  "Arizona": { type: "public", city: "Tucson", state: "AZ" },
+  "Arizona State": { type: "public", city: "Tempe", state: "AZ" },
+  "Baylor": { type: "private", city: "Waco", state: "TX" },
+  "BYU": { type: "private", city: "Provo", state: "UT" },
+  "Cincinnati": { type: "public", city: "Cincinnati", state: "OH" },
+  "Colorado": { type: "public", city: "Boulder", state: "CO" },
+  "Houston": { type: "public", city: "Houston", state: "TX" },
+  "Iowa State": { type: "public", city: "Ames", state: "IA" },
+  "Kansas": { type: "public", city: "Lawrence", state: "KS" },
+  "Kansas State": { type: "public", city: "Manhattan", state: "KS" },
+  "Oklahoma State": { type: "public", city: "Stillwater", state: "OK" },
+  "TCU": { type: "private", city: "Fort Worth", state: "TX" },
+  "Texas Tech": { type: "public", city: "Lubbock", state: "TX" },
+  "UCF": { type: "public", city: "Orlando", state: "FL" },
+  "Utah": { type: "public", city: "Salt Lake City", state: "UT" },
+  "West Virginia": { type: "public", city: "Morgantown", state: "WV" },
+  // Big Ten
+  "Illinois": { type: "public", city: "Champaign", state: "IL" },
+  "Indiana": { type: "public", city: "Bloomington", state: "IN" },
+  "Iowa": { type: "public", city: "Iowa City", state: "IA" },
+  "Maryland": { type: "public", city: "College Park", state: "MD" },
+  "Michigan": { type: "public", city: "Ann Arbor", state: "MI" },
+  "Michigan State": { type: "public", city: "East Lansing", state: "MI" },
+  "Minnesota": { type: "public", city: "Minneapolis", state: "MN" },
+  "Nebraska": { type: "public", city: "Lincoln", state: "NE" },
+  "Northwestern": { type: "private", city: "Evanston", state: "IL" },
+  "Ohio State": { type: "public", city: "Columbus", state: "OH" },
+  "Oregon": { type: "public", city: "Eugene", state: "OR" },
+  "Penn State": { type: "public", city: "University Park", state: "PA" },
+  "Purdue": { type: "public", city: "West Lafayette", state: "IN" },
+  "Rutgers": { type: "public", city: "New Brunswick", state: "NJ" },
+  "UCLA": { type: "public", city: "Los Angeles", state: "CA" },
+  "USC": { type: "private", city: "Los Angeles", state: "CA" },
+  "Washington": { type: "public", city: "Seattle", state: "WA" },
+  "Wisconsin": { type: "public", city: "Madison", state: "WI" },
+  // SEC
+  "Alabama": { type: "public", city: "Tuscaloosa", state: "AL" },
+  "Arkansas": { type: "public", city: "Fayetteville", state: "AR" },
+  "Auburn": { type: "public", city: "Auburn", state: "AL" },
+  "Florida": { type: "public", city: "Gainesville", state: "FL" },
+  "Georgia": { type: "public", city: "Athens", state: "GA" },
+  "Kentucky": { type: "public", city: "Lexington", state: "KY" },
+  "LSU": { type: "public", city: "Baton Rouge", state: "LA" },
+  "Mississippi State": { type: "public", city: "Starkville", state: "MS" },
+  "Missouri": { type: "public", city: "Columbia", state: "MO" },
+  "Oklahoma": { type: "public", city: "Norman", state: "OK" },
+  "Ole Miss": { type: "public", city: "Oxford", state: "MS" },
+  "South Carolina": { type: "public", city: "Columbia", state: "SC" },
+  "Tennessee": { type: "public", city: "Knoxville", state: "TN" },
+  "Texas": { type: "public", city: "Austin", state: "TX" },
+  "Texas A&M": { type: "public", city: "College Station", state: "TX" },
+  "Vanderbilt": { type: "private", city: "Nashville", state: "TN" },
+  // Ivy League
+  "Brown": { type: "private", city: "Providence", state: "RI" },
+  "Columbia": { type: "private", city: "New York", state: "NY" },
+  "Cornell": { type: "private", city: "Ithaca", state: "NY" },
+  "Dartmouth": { type: "private", city: "Hanover", state: "NH" },
+  "Harvard": { type: "private", city: "Cambridge", state: "MA" },
+  "Pennsylvania": { type: "private", city: "Philadelphia", state: "PA" },
+  "Princeton": { type: "private", city: "Princeton", state: "NJ" },
+  "Yale": { type: "private", city: "New Haven", state: "CT" },
+  // Other Notable
+  "MIT": { type: "private", city: "Cambridge", state: "MA" },
+  "Notre Dame": { type: "private", city: "Notre Dame", state: "IN" },
+  "Rice": { type: "private", city: "Houston", state: "TX" },
+  "Carnegie Mellon": { type: "private", city: "Pittsburgh", state: "PA" },
+  "NYU": { type: "private", city: "New York", state: "NY" },
+  "Georgetown": { type: "private", city: "Washington", state: "DC" },
+  "Washington State": { type: "public", city: "Pullman", state: "WA" },
+  "Oregon State": { type: "public", city: "Corvallis", state: "OR" },
+  "San Diego State": { type: "public", city: "San Diego", state: "CA" },
+  "Boise State": { type: "public", city: "Boise", state: "ID" },
+  "Fresno State": { type: "public", city: "Fresno", state: "CA" },
+  "Colorado State": { type: "public", city: "Fort Collins", state: "CO" },
+  "Utah State": { type: "public", city: "Logan", state: "UT" },
+  "UNLV": { type: "public", city: "Las Vegas", state: "NV" },
+  "New Mexico": { type: "public", city: "Albuquerque", state: "NM" },
+  "Air Force": { type: "public", city: "Colorado Springs", state: "CO" },
+  "Navy": { type: "public", city: "Annapolis", state: "MD" },
+  "Army": { type: "public", city: "West Point", state: "NY" },
+  "Connecticut": { type: "public", city: "Storrs", state: "CT" },
+  "Temple": { type: "public", city: "Philadelphia", state: "PA" },
+  "Tulane": { type: "private", city: "New Orleans", state: "LA" },
+  "Memphis": { type: "public", city: "Memphis", state: "TN" },
+};
+
+export function getCollegeMetadata(collegeName: string): CollegeMetadata | null {
+  return collegeMetadata[collegeName] ?? null;
+}
+
 // QS World University Rankings 2025
 // Update annually - last updated: 2025
 export const qsWorldRankings: Record<string, number> = {

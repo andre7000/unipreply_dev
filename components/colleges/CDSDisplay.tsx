@@ -208,16 +208,31 @@ export function CDSDisplay({ collegeName }: CDSDisplayProps) {
   const edDeadline = admissions?.C21_Early_Decision?.Closing_date;
   const rdDeadline = admissions?.C13_C18_Admission_Policies?.Application_closing_date;
 
+  // General info from CDS
+  const generalInfo = cdsData.A_General_Information;
+  const location = generalInfo?.A1_Address_Information?.City_State_Zip_Country;
+  const controlType = generalInfo?.A2_Source_of_institutional_control;
+
   return (
     <div className="space-y-6">
-      {/* CDS Year Badge */}
-      {cdsData.Common_Data_Set && (
-        <div className="flex items-center gap-2">
+      {/* CDS Year Badge + Info */}
+      <div className="flex flex-wrap items-center gap-3">
+        {cdsData.Common_Data_Set && (
           <span className="text-sm font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
             CDS {cdsData.Common_Data_Set}
           </span>
-        </div>
-      )}
+        )}
+        {controlType && (
+          <span className="text-sm text-muted-foreground">
+            {controlType}
+          </span>
+        )}
+        {location && (
+          <span className="text-sm text-muted-foreground">
+            • {location}
+          </span>
+        )}
+      </div>
 
       {/* Key Stats Banner */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

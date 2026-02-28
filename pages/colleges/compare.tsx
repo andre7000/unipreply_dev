@@ -1,13 +1,13 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/config/firebaseConfig";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { colleges as collegeList, getUsNewsRank, getQsWorldRank } from "@/data/dataSource";
-import { ArrowLeft, X, Loader2, Search } from "lucide-react";
+import { colleges as collegeList, getUsNewsRank, getQsWorldRank, getCollegeMetadata } from "@/data/dataSource";
+import { ArrowLeft, X, Loader2, Search, Plus, Trash2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 
 interface CDSData {
   id: string;
@@ -33,6 +33,26 @@ interface CompareMetric {
 }
 
 const metrics: CompareMetric[] = [
+  {
+    label: "Type",
+    category: "Overview",
+    getValue: (d, schoolLabel) => {
+      const meta = schoolLabel ? getCollegeMetadata(schoolLabel) : null;
+      if (meta) return meta.type === "public" ? "Public" : "Private";
+      const control = d?.A_General_Information?.A2_Source_of_institutional_control;
+      return control || null;
+    },
+  },
+  {
+    label: "Location",
+    category: "Overview",
+    getValue: (d, schoolLabel) => {
+      const meta = schoolLabel ? getCollegeMetadata(schoolLabel) : null;
+      if (meta) return `${meta.city}, ${meta.state}`;
+      const loc = d?.A_General_Information?.A1_Address_Information?.City_State_Zip_Country;
+      return loc || null;
+    },
+  },
   {
     label: "US News Rank",
     category: "Rankings",
@@ -139,7 +159,13 @@ const metrics: CompareMetric[] = [
   },
 ];
 
-const MAX_SCHOOLS = 4;
+const MAX_SCHOOLS = 10;
+
+interface CustomRow {
+  id: string;
+  label: string;
+  values: Record<string, string>; // schoolValue -> user input
+}
 
 export default function ComparePage() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -151,6 +177,11 @@ export default function ComparePage() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const handledAddParam = useRef<string | null>(null);
+  const [customRows, setCustomRows] = useState<CustomRow[]>([]);
+  const [newRowLabel, setNewRowLabel] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Handle URL param to add school (only once per param value)
   useEffect(() => {
@@ -174,6 +205,56 @@ export default function ComparePage() {
       router.push("/");
     }
   }, [currentUser, authLoading, router]);
+
+  // Load saved comparison on mount
+  useEffect(() => {
+    async function loadSavedComparison() {
+      if (!currentUser || initialLoadDone) return;
+      try {
+        const docRef = doc(db, "userComparisons", currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.schools?.length > 0) {
+            setSchools(data.schools);
+          }
+          if (data.customRows?.length > 0) {
+            setCustomRows(data.customRows);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading saved comparison:", error);
+      }
+      setInitialLoadDone(true);
+    }
+    loadSavedComparison();
+  }, [currentUser, initialLoadDone]);
+
+  // Auto-save comparison
+  const saveComparison = useCallback(async () => {
+    if (!currentUser || !initialLoadDone) return;
+    setSaving(true);
+    try {
+      await setDoc(doc(db, "userComparisons", currentUser.uid), {
+        schools,
+        customRows,
+        updatedAt: new Date(),
+      });
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Error saving comparison:", error);
+    }
+    setSaving(false);
+  }, [currentUser, schools, customRows, initialLoadDone]);
+
+  // Debounced auto-save when schools or customRows change
+  useEffect(() => {
+    if (!initialLoadDone) return;
+    const timeout = setTimeout(() => {
+      saveComparison();
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [schools, customRows, saveComparison, initialLoadDone]);
 
   // Load CDS data when schools change
   useEffect(() => {
@@ -257,6 +338,24 @@ export default function ComparePage() {
     setSchools((prev) => prev.filter((s) => s.value !== value));
   };
 
+  const moveSchoolLeft = (index: number) => {
+    if (index <= 0) return;
+    setSchools((prev) => {
+      const newSchools = [...prev];
+      [newSchools[index - 1], newSchools[index]] = [newSchools[index], newSchools[index - 1]];
+      return newSchools;
+    });
+  };
+
+  const moveSchoolRight = (index: number) => {
+    if (index >= schools.length - 1) return;
+    setSchools((prev) => {
+      const newSchools = [...prev];
+      [newSchools[index], newSchools[index + 1]] = [newSchools[index + 1], newSchools[index]];
+      return newSchools;
+    });
+  };
+
   const filteredColleges = useMemo(() => {
     if (!searchQuery.trim()) return [];
     return collegeList
@@ -271,6 +370,31 @@ export default function ComparePage() {
   useEffect(() => {
     setHighlightedIndex(0);
   }, [searchQuery]);
+
+  const addCustomRow = () => {
+    if (!newRowLabel.trim()) return;
+    const newRow: CustomRow = {
+      id: `custom-${Date.now()}`,
+      label: newRowLabel.trim(),
+      values: {},
+    };
+    setCustomRows((prev) => [...prev, newRow]);
+    setNewRowLabel("");
+  };
+
+  const removeCustomRow = (id: string) => {
+    setCustomRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const updateCustomRowValue = (rowId: string, schoolValue: string, value: string) => {
+    setCustomRows((prev) =>
+      prev.map((row) =>
+        row.id === rowId
+          ? { ...row, values: { ...row.values, [schoolValue]: value } }
+          : row
+      )
+    );
+  };
 
   const categories = [...new Set(metrics.map((m) => m.category))];
 
@@ -294,6 +418,18 @@ export default function ComparePage() {
             </Link>
           </Button>
           <h1 className="text-2xl font-bold">Compare Schools</h1>
+          {saving && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              Saving...
+            </span>
+          )}
+          {!saving && lastSaved && (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <Check className="size-3" />
+              Saved
+            </span>
+          )}
         </div>
 
         {/* School Selection */}
@@ -366,6 +502,7 @@ export default function ComparePage() {
             <span className="ml-2 text-muted-foreground">Loading data...</span>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full border-collapse text-sm">
               <thead>
@@ -373,24 +510,44 @@ export default function ComparePage() {
                   <th className="text-left p-3 font-medium min-w-[180px] sticky left-0 bg-muted/50">
                     Metric
                   </th>
-                  {schools.map((school) => (
+                  {schools.map((school, index) => (
                     <th key={school.value} className="text-left p-3 font-medium min-w-[160px]">
-                      <Link
-                        href={`/colleges/${school.value}`}
-                        className="hover:underline"
-                      >
-                        {school.label}
-                      </Link>
-                      {cdsDataMap[school.value]?.Common_Data_Set && (
-                        <div className="text-xs text-muted-foreground font-normal mt-0.5">
-                          CDS {cdsDataMap[school.value]?.Common_Data_Set}
+                      <div className="flex items-start gap-1">
+                        <button
+                          onClick={() => moveSchoolLeft(index)}
+                          disabled={index === 0}
+                          className="p-0.5 hover:bg-background rounded disabled:opacity-20 disabled:cursor-not-allowed"
+                          title="Move left"
+                        >
+                          <ChevronLeft className="size-4" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <Link
+                            href={`/colleges/${school.value}`}
+                            className="hover:underline"
+                          >
+                            {school.label}
+                          </Link>
+                          {cdsDataMap[school.value]?.Common_Data_Set && (
+                            <div className="text-xs text-muted-foreground font-normal mt-0.5">
+                              CDS {cdsDataMap[school.value]?.Common_Data_Set}
+                            </div>
+                          )}
+                          {!cdsDataMap[school.value] && (
+                            <div className="text-xs text-amber-600 font-normal mt-0.5">
+                              No CDS data
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {!cdsDataMap[school.value] && (
-                        <div className="text-xs text-amber-600 font-normal mt-0.5">
-                          No CDS data
-                        </div>
-                      )}
+                        <button
+                          onClick={() => moveSchoolRight(index)}
+                          disabled={index === schools.length - 1}
+                          className="p-0.5 hover:bg-background rounded disabled:opacity-20 disabled:cursor-not-allowed"
+                          title="Move right"
+                        >
+                          <ChevronRight className="size-4" />
+                        </button>
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -424,9 +581,101 @@ export default function ComparePage() {
                       ))}
                   </>
                 ))}
+
+                {/* Custom Notes Section */}
+                {(customRows.length > 0 || schools.length > 0) && (
+                  <>
+                    <tr className="bg-purple-500/10">
+                      <td
+                        colSpan={schools.length + 1}
+                        className="p-2 font-semibold text-purple-700 text-xs uppercase tracking-wide"
+                      >
+                        Your Notes
+                      </td>
+                    </tr>
+                    {customRows.map((row) => (
+                      <tr key={row.id} className="border-b hover:bg-muted/30">
+                        <td className="p-3 text-muted-foreground sticky left-0 bg-background">
+                          <div className="flex items-center gap-2">
+                            <span>{row.label}</span>
+                            <button
+                              onClick={() => removeCustomRow(row.id)}
+                              className="text-red-500 hover:text-red-700 opacity-50 hover:opacity-100"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
+                        </td>
+                        {schools.map((school) => (
+                          <td key={school.value} className="p-2">
+                            <input
+                              type="text"
+                              value={row.values[school.value] || ""}
+                              onChange={(e) =>
+                                updateCustomRowValue(row.id, school.value, e.target.value)
+                              }
+                              placeholder="Add note..."
+                              className="w-full px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {/* Add new custom row */}
+                    <tr className="border-b">
+                      <td className="p-2 sticky left-0 bg-background">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={newRowLabel}
+                            onChange={(e) => setNewRowLabel(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addCustomRow()}
+                            placeholder="Add custom row..."
+                            className="flex-1 px-2 py-1 text-sm border rounded bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                          />
+                          <button
+                            onClick={addCustomRow}
+                            disabled={!newRowLabel.trim()}
+                            className="p-1 text-primary hover:bg-primary/10 rounded disabled:opacity-30"
+                          >
+                            <Plus className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                      {schools.map((school) => (
+                        <td key={school.value} className="p-2 text-muted-foreground text-sm">
+                          {/* Empty cell for new row */}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* Quick Add Custom Rows */}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Quick add:</span>
+            {["Political Geography", "Campus Vibe", "Weather", "Greek Life", "Sports Culture", "Research Focus", "My Fit Score"].map((label) => (
+              <button
+                key={label}
+                onClick={() => {
+                  if (!customRows.some((r) => r.label === label)) {
+                    setCustomRows((prev) => [
+                      ...prev,
+                      { id: `custom-${Date.now()}-${label}`, label, values: {} },
+                    ]);
+                  }
+                }}
+                disabled={customRows.some((r) => r.label === label)}
+                className="px-2 py-1 border rounded-full hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                + {label}
+              </button>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </DashboardLayout>

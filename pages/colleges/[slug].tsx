@@ -6,10 +6,10 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCollegeBySlug } from "@/lib/college-utils";
-import { getUsNewsRank, getQsWorldRank } from "@/data/dataSource";
+import { getUsNewsRank, getQsWorldRank, getCollegeMetadata } from "@/data/dataSource";
 import { CDSDisplay } from "@/components/colleges/CDSDisplay";
 import { ScholarshipDisplay } from "@/components/colleges/ScholarshipDisplay";
-import { GitCompare, Trophy } from "lucide-react";
+import { GitCompare, Trophy, MapPin, Building } from "lucide-react";
 
 export default function CollegeDetail() {
   const { currentUser, loading } = useAuth();
@@ -21,6 +21,7 @@ export default function CollegeDetail() {
   
   const usNewsRank = college ? getUsNewsRank(college.label) : null;
   const qsWorldRank = college ? getQsWorldRank(college.label) : null;
+  const metadata = college ? getCollegeMetadata(college.label) : null;
 
   useEffect(() => {
     if (!loading && !currentUser) {
@@ -72,9 +73,23 @@ export default function CollegeDetail() {
                 </div>
               )}
             </div>
-            <p className="text-muted-foreground">
-              {college.conference} • Research university
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-1">
+              {metadata && (
+                <>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="size-3.5" />
+                    {metadata.city}, {metadata.state}
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Building className="size-3.5" />
+                    {metadata.type === "public" ? "Public" : "Private"}
+                  </span>
+                  <span>•</span>
+                </>
+              )}
+              <span>{college.conference}</span>
+            </div>
           </div>
           <Button variant="outline" size="sm" asChild>
             <Link href={`/colleges/compare?add=${college.value}`}>
