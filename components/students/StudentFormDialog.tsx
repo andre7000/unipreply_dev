@@ -137,14 +137,14 @@ export function StudentFormDialog({
           name: name.trim(),
           stats,
           netPriceProfile,
-          savedColleges: student.savedColleges,
+          mySchools: student.mySchools,
         });
       } else {
         await onSubmit({
           name: name.trim(),
           stats,
           netPriceProfile,
-          savedColleges: [],
+          mySchools: [],
         });
       }
       onOpenChange(false);
