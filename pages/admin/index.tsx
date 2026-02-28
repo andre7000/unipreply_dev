@@ -1,6 +1,14 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, Loader2, CheckCircle, AlertCircle, RefreshCw, FileText, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Upload, Loader2, CheckCircle, AlertCircle, RefreshCw, FileText, Link as LinkIcon, Database } from 'lucide-react';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '@/config/firebaseConfig';
 import { colleges as collegeList } from '@/data/dataSource';
+
+interface UploadedDataset {
+  id: string;
+  institution: string;
+  cdsYear: string;
+}
 
 interface UploadStatus {
   status: 'idle' | 'uploading' | 'processing' | 'success' | 'error';
@@ -26,6 +34,37 @@ export default function AdminPage() {
   const [selectedCollege, setSelectedCollege] = useState('');
   const [scholarshipUrl, setScholarshipUrl] = useState('');
   const [studentType, setStudentType] = useState<'first-year' | 'transfer' | 'both'>('both');
+  const [uploadedDatasets, setUploadedDatasets] = useState<UploadedDataset[]>([]);
+  const [datasetsLoading, setDatasetsLoading] = useState(true);
+  const [datasetSearch, setDatasetSearch] = useState('');
+
+  const fetchUploadedDatasets = useCallback(async () => {
+    setDatasetsLoading(true);
+    try {
+      const q = query(collection(db, 'collegeDatasets'));
+      const snapshot = await getDocs(q);
+      const datasets: UploadedDataset[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const rawYear = data.Common_Data_Set || 'Unknown';
+        datasets.push({
+          id: doc.id,
+          institution: data.Institution || data.A_General_Information?.A1_Address_Information?.Name || doc.id,
+          cdsYear: rawYear.replace(/Common Data Set\s*/i, '').trim(),
+        });
+      });
+      datasets.sort((a, b) => a.institution.localeCompare(b.institution));
+      setUploadedDatasets(datasets);
+    } catch (err) {
+      console.error('Error fetching datasets:', err);
+    } finally {
+      setDatasetsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUploadedDatasets();
+  }, [fetchUploadedDatasets]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -93,6 +132,8 @@ export default function AdminPage() {
         message: `Successfully processed and stored! Document ID: ${result.docId}`,
         fileName: file.name
       });
+      
+      fetchUploadedDatasets();
 
     } catch (error) {
       setUploadStatus({
@@ -217,74 +258,149 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
           <p className="text-gray-600">Upload college datasets and scholarship information</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-8">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload PDF Document</h2>
-            <p className="text-gray-600 mb-6">
-              Upload PDF files containing college datasets or scholarship information. 
-              The documents will be processed using Gemini AI and stored in Firestore.
-            </p>
-          </div>
-
-          <div
-            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${getStatusColor()}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById('file-input')?.click()}
-          >
-            <input
-              id="file-input"
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-              disabled={uploadStatus.status === 'uploading' || uploadStatus.status === 'processing'}
-            />
-            
-            <div className="flex flex-col items-center space-y-4">
-              {getStatusIcon()}
-              <div>
-                <p className="text-lg font-medium text-gray-700">
-                  {uploadStatus.status === 'idle' ? 'Drop PDF here or click to browse' : uploadStatus.fileName}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left: PDF Upload */}
+            <div>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload PDF Document</h2>
+                <p className="text-gray-600 mb-6">
+                  Upload PDF files containing college datasets. 
+                  Processed using Gemini AI and stored in Firestore.
                 </p>
-                {uploadStatus.message && (
-                  <p className="text-sm text-gray-500 mt-2">{uploadStatus.message}</p>
-                )}
               </div>
-              {uploadStatus.status === 'idle' && (
-                <p className="text-sm text-gray-400">PDF files only, max 10MB</p>
+
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${getStatusColor()}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('file-input')?.click()}
+              >
+                <input
+                  id="file-input"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  disabled={uploadStatus.status === 'uploading' || uploadStatus.status === 'processing'}
+                />
+                
+                <div className="flex flex-col items-center space-y-4">
+                  {getStatusIcon()}
+                  <div>
+                    <p className="text-lg font-medium text-gray-700">
+                      {uploadStatus.status === 'idle' ? 'Drop PDF here or click to browse' : uploadStatus.fileName}
+                    </p>
+                    {uploadStatus.message && (
+                      <p className="text-sm text-gray-500 mt-2">{uploadStatus.message}</p>
+                    )}
+                  </div>
+                  {uploadStatus.status === 'idle' && (
+                    <p className="text-sm text-gray-400">PDF files only, max 10MB</p>
+                  )}
+                </div>
+              </div>
+
+              {uploadStatus.status === 'success' && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-800 text-sm">{uploadStatus.message}</p>
+                </div>
               )}
-            </div>
-          </div>
 
-          {uploadStatus.status === 'success' && (
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800">{uploadStatus.message}</p>
-            </div>
-          )}
+              {uploadStatus.status === 'error' && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 text-sm">{uploadStatus.message}</p>
+                </div>
+              )}
 
-          {uploadStatus.status === 'error' && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800">{uploadStatus.message}</p>
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleClearStatus}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Clear Status</span>
+                </button>
+              </div>
             </div>
-          )}
 
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Uploads</h3>
-            <button
-              onClick={handleClearStatus}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <RefreshCw className="w-5 h-5" />
-              <span>Clear Status</span>
-            </button>
+            {/* Right: Uploaded Datasets List */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-800">Uploaded CDS Data</h2>
+                </div>
+                <button
+                  onClick={fetchUploadedDatasets}
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Refresh list"
+                >
+                  <RefreshCw className={`w-4 h-4 ${datasetsLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              
+              <div className="relative mb-3">
+                <input
+                  type="text"
+                  value={datasetSearch}
+                  onChange={(e) => setDatasetSearch(e.target.value)}
+                  placeholder="Search universities..."
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              <p className="text-gray-600 text-sm mb-2">
+                {datasetSearch 
+                  ? `${uploadedDatasets.filter(d => d.institution.toLowerCase().includes(datasetSearch.toLowerCase())).length} of ${uploadedDatasets.length} universities`
+                  : `${uploadedDatasets.length} universities in Firestore`
+                }
+              </p>
+              
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-[320px] overflow-y-auto">
+                  {datasetsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                      <span className="ml-2 text-gray-500 text-sm">Loading...</span>
+                    </div>
+                  ) : uploadedDatasets.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      No datasets uploaded yet
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-medium text-gray-700">University</th>
+                          <th className="text-left py-2 px-3 font-medium text-gray-700 w-28">CDS Year</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {uploadedDatasets
+                          .filter((d) => d.institution.toLowerCase().includes(datasetSearch.toLowerCase()))
+                          .map((dataset) => (
+                          <tr key={dataset.id} className="hover:bg-gray-50">
+                            <td className="py-2 px-3 text-gray-800">{dataset.institution}</td>
+                            <td className="py-2 px-3 text-gray-600">{dataset.cdsYear}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

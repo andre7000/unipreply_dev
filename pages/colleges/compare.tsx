@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { colleges as collegeList, getUsNewsRank, getQsWorldRank, getCollegeMetadata } from "@/data/dataSource";
-import { ArrowLeft, X, Loader2, Search, Plus, Trash2, ChevronUp, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, X, Loader2, Search, Plus, Trash2, ChevronUp, ChevronDown, Check, Database } from "lucide-react";
 
 interface CDSData {
   id: string;
@@ -159,7 +159,7 @@ const metrics: CompareMetric[] = [
   },
 ];
 
-const MAX_SCHOOLS = 10;
+const MAX_SCHOOLS = 50;
 
 interface CustomRow {
   id: string;
@@ -182,6 +182,10 @@ export default function ComparePage() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [schoolsWithCDS, setSchoolsWithCDS] = useState<SelectedSchool[]>([]);
+  const [cdsSearchQuery, setCdsSearchQuery] = useState("");
+  const [cdsSearchFocused, setCdsSearchFocused] = useState(false);
+  const [cdsHighlightedIndex, setCdsHighlightedIndex] = useState(0);
 
   // Handle URL param to add school (only once per param value)
   useEffect(() => {
@@ -205,6 +209,33 @@ export default function ComparePage() {
       router.push("/");
     }
   }, [currentUser, authLoading, router]);
+
+  // Fetch schools that have CDS data in Firestore
+  useEffect(() => {
+    async function fetchSchoolsWithCDS() {
+      try {
+        const snapshot = await getDocs(collection(db, "collegeDatasets"));
+        const cdsSchools: SelectedSchool[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const institution = data.Institution || data.A_General_Information?.A1_Address_Information?.Name || docSnap.id;
+          const college = collegeList.find(
+            (c) => c.value === docSnap.id || c.label.toLowerCase() === institution.toLowerCase()
+          );
+          if (college) {
+            cdsSchools.push({ value: college.value, label: college.label });
+          } else {
+            cdsSchools.push({ value: docSnap.id, label: institution });
+          }
+        });
+        cdsSchools.sort((a, b) => a.label.localeCompare(b.label));
+        setSchoolsWithCDS(cdsSchools);
+      } catch (error) {
+        console.error("Error fetching schools with CDS:", error);
+      }
+    }
+    fetchSchoolsWithCDS();
+  }, []);
 
   // Load saved comparison on mount
   useEffect(() => {
@@ -334,6 +365,36 @@ export default function ComparePage() {
     }
   };
 
+  const addSchoolFromCds = (school: SelectedSchool) => {
+    if (schools.length >= MAX_SCHOOLS) return;
+    if (schools.some((s) => s.value === school.value)) return;
+    setSchools((prev) => [...prev, school]);
+    setCdsSearchQuery("");
+    setCdsHighlightedIndex(0);
+  };
+
+  const handleCdsSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredCdsColleges.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setCdsHighlightedIndex((prev) => 
+        prev < filteredCdsColleges.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setCdsHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filteredCdsColleges[cdsHighlightedIndex]) {
+        addSchoolFromCds(filteredCdsColleges[cdsHighlightedIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setCdsSearchFocused(false);
+      setCdsSearchQuery("");
+    }
+  };
+
   const removeSchool = (value: string) => {
     setSchools((prev) => prev.filter((s) => s.value !== value));
   };
@@ -367,9 +428,25 @@ export default function ComparePage() {
       .slice(0, 8);
   }, [searchQuery, schools]);
 
+  const filteredCdsColleges = useMemo(() => {
+    const available = schoolsWithCDS.filter(
+      (c) => !schools.some((s) => s.value === c.value)
+    );
+    if (!cdsSearchQuery.trim()) return available;
+    return available
+      .filter((c) =>
+        c.label.toLowerCase().includes(cdsSearchQuery.toLowerCase())
+      )
+      .slice(0, 15);
+  }, [cdsSearchQuery, schools, schoolsWithCDS]);
+
   useEffect(() => {
     setHighlightedIndex(0);
   }, [searchQuery]);
+
+  useEffect(() => {
+    setCdsHighlightedIndex(0);
+  }, [cdsSearchQuery]);
 
   const addCustomRow = () => {
     if (!newRowLabel.trim()) return;
@@ -455,35 +532,75 @@ export default function ComparePage() {
           </div>
 
           {schools.length < MAX_SCHOOLS && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search to add a school..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                onKeyDown={handleSearchKeyDown}
-                className="w-full pl-10 pr-4 py-2 border rounded-md text-sm bg-background"
-              />
-              {searchFocused && filteredColleges.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
-                  {filteredColleges.map((college, index) => (
-                    <button
-                      key={college.value}
-                      onClick={() => addSchool(college)}
-                      className={`w-full text-left px-4 py-2 text-sm ${
-                        index === highlightedIndex
-                          ? "bg-muted"
-                          : "hover:bg-muted"
-                      }`}
-                    >
-                      {college.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search all schools..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                  onKeyDown={handleSearchKeyDown}
+                  className="w-full pl-10 pr-4 py-2 border rounded-md text-sm bg-background"
+                />
+                {searchFocused && filteredColleges.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
+                    {filteredColleges.map((college, index) => (
+                      <button
+                        key={college.value}
+                        onClick={() => addSchool(college)}
+                        className={`w-full text-left px-4 py-2 text-sm ${
+                          index === highlightedIndex
+                            ? "bg-muted"
+                            : "hover:bg-muted"
+                        }`}
+                      >
+                        {college.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <Database className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-green-600" />
+                <input
+                  type="text"
+                  placeholder={`Search schools with CDS data (${schoolsWithCDS.length})...`}
+                  value={cdsSearchQuery}
+                  onChange={(e) => setCdsSearchQuery(e.target.value)}
+                  onFocus={() => setCdsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setCdsSearchFocused(false), 200)}
+                  onKeyDown={handleCdsSearchKeyDown}
+                  className="w-full pl-10 pr-4 py-2 border border-green-200 rounded-md text-sm bg-green-50/50"
+                />
+                {cdsSearchFocused && filteredCdsColleges.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-green-200 rounded-md shadow-lg z-10 max-h-72 overflow-y-auto">
+                    {!cdsSearchQuery.trim() && (
+                      <div className="px-3 py-1.5 text-xs text-muted-foreground border-b bg-muted/30">
+                        {filteredCdsColleges.length} schools with CDS data available
+                      </div>
+                    )}
+                    {filteredCdsColleges.map((college, index) => (
+                      <button
+                        key={college.value}
+                        onClick={() => addSchoolFromCds(college)}
+                        className={`w-full text-left px-4 py-2 text-sm ${
+                          index === cdsHighlightedIndex
+                            ? "bg-green-100"
+                            : "hover:bg-green-50"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Database className="size-3 text-green-600" />
+                          {college.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-2">
