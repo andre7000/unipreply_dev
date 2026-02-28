@@ -12,12 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, Target, Shield, Plus, X, ExternalLink } from "lucide-react";
+import { Star, Target, Shield, Plus, X, ExternalLink, ChevronUp, ChevronDown, Loader2, Check } from "lucide-react";
 import { colleges } from "@/data/dataSource";
 import { getCollegeSlug } from "@/lib/college-utils";
 import type { SavedSchool } from "@/types/workspace";
 
-type SchoolCategory = "reach" | "target" | "safety";
+type SchoolCategory = "aspirational" | "target" | "safety";
 
 export default function MySchoolsPage() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -25,6 +25,8 @@ export default function MySchoolsPage() {
   const router = useRouter();
   const [isAdding, setIsAdding] = useState<SchoolCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   const loading = authLoading || workspaceLoading;
   const savedSchools: SavedSchool[] = activeStudent?.mySchools ?? [];
@@ -37,16 +39,22 @@ export default function MySchoolsPage() {
 
   const updateMySchools = useCallback(async (newSchools: SavedSchool[]) => {
     if (!activeStudent) return;
+    setSaving(true);
     try {
       await updateStudent(activeStudent.id, { mySchools: newSchools });
+      setLastSaved(new Date());
     } catch (err) {
       console.error("Failed to update schools:", err);
+    } finally {
+      setSaving(false);
     }
   }, [activeStudent, updateStudent]);
 
   const addSchool = async (college: { value: string; label: string }, category: SchoolCategory) => {
     if (savedSchools.some((s) => s.value === college.value)) return;
-    await updateMySchools([...savedSchools, { ...college, category }]);
+    const schoolsInCategory = savedSchools.filter((s) => s.category === category);
+    const nextRank = schoolsInCategory.length + 1;
+    await updateMySchools([...savedSchools, { ...college, category, rank: nextRank }]);
     setIsAdding(null);
     setSearchQuery("");
   };
@@ -56,15 +64,72 @@ export default function MySchoolsPage() {
   };
 
   const moveSchool = async (value: string, newCategory: SchoolCategory) => {
-    await updateMySchools(
-      savedSchools.map((s) =>
-        s.value === value ? { ...s, category: newCategory } : s
-      )
-    );
+    const school = savedSchools.find((s) => s.value === value);
+    if (!school) return;
+
+    const oldCategory = school.category;
+    const schoolsInNewCategory = savedSchools.filter((s) => s.category === newCategory);
+    const newRank = schoolsInNewCategory.length + 1;
+
+    const updatedSchools = savedSchools.map((s) => {
+      if (s.value === value) {
+        return { ...s, category: newCategory, rank: newRank };
+      }
+      if (s.category === oldCategory && s.rank && school.rank && s.rank > school.rank) {
+        return { ...s, rank: s.rank - 1 };
+      }
+      return s;
+    });
+
+    await updateMySchools(updatedSchools);
+  };
+
+  const moveSchoolUp = async (value: string, category: SchoolCategory) => {
+    const schoolsInCategory = getSchoolsByCategory(category);
+    const currentIndex = schoolsInCategory.findIndex((s) => s.value === value);
+    if (currentIndex <= 0) return;
+
+    const currentSchool = schoolsInCategory[currentIndex];
+    const aboveSchool = schoolsInCategory[currentIndex - 1];
+
+    const updatedSchools = savedSchools.map((s) => {
+      if (s.value === currentSchool.value) {
+        return { ...s, rank: (aboveSchool.rank ?? currentIndex) };
+      }
+      if (s.value === aboveSchool.value) {
+        return { ...s, rank: (currentSchool.rank ?? currentIndex + 1) };
+      }
+      return s;
+    });
+
+    await updateMySchools(updatedSchools);
+  };
+
+  const moveSchoolDown = async (value: string, category: SchoolCategory) => {
+    const schoolsInCategory = getSchoolsByCategory(category);
+    const currentIndex = schoolsInCategory.findIndex((s) => s.value === value);
+    if (currentIndex >= schoolsInCategory.length - 1) return;
+
+    const currentSchool = schoolsInCategory[currentIndex];
+    const belowSchool = schoolsInCategory[currentIndex + 1];
+
+    const updatedSchools = savedSchools.map((s) => {
+      if (s.value === currentSchool.value) {
+        return { ...s, rank: (belowSchool.rank ?? currentIndex + 2) };
+      }
+      if (s.value === belowSchool.value) {
+        return { ...s, rank: (currentSchool.rank ?? currentIndex + 1) };
+      }
+      return s;
+    });
+
+    await updateMySchools(updatedSchools);
   };
 
   const getSchoolsByCategory = (category: SchoolCategory) => {
-    return savedSchools.filter((s) => s.category === category);
+    return savedSchools
+      .filter((s) => s.category === category)
+      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
   };
 
   const filteredColleges = colleges.filter(
@@ -109,8 +174,8 @@ export default function MySchoolsPage() {
 
   const categories: { key: SchoolCategory; title: string; description: string; icon: React.ReactNode; color: string }[] = [
     {
-      key: "reach",
-      title: "Reach",
+      key: "aspirational",
+      title: "Aspirational",
       description: "Dream schools - competitive admission based on your profile",
       icon: <Star className="size-5" />,
       color: "text-amber-500",
@@ -134,13 +199,28 @@ export default function MySchoolsPage() {
   return (
     <DashboardLayout title="My Schools">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {activeStudent.name}&apos;s Schools
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Organize your college list by Reach, Target, and Safety schools.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {activeStudent.name}&apos;s Schools
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Organize your college list by Aspirational, Target, and Safety schools.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+            {saving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : lastSaved ? (
+              <>
+                <Check className="size-4 text-green-500" />
+                <span>Saved</span>
+              </>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-6">
@@ -203,28 +283,51 @@ export default function MySchoolsPage() {
                       No {cat.title.toLowerCase()} schools added yet
                     </p>
                   ) : (
-                    <div className="space-y-2">
-                      {schoolsInCategory.map((school) => (
+                    <div className="space-y-1">
+                      {schoolsInCategory.map((school, index) => (
                         <div
                           key={school.value}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 group"
+                          className="flex items-center gap-2 py-1.5 px-2 border rounded-md hover:bg-muted/50 group"
                         >
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => moveSchoolUp(school.value, cat.key)}
+                              disabled={index === 0}
+                              className="h-5 w-5 p-0 opacity-40 hover:opacity-100 disabled:opacity-15"
+                            >
+                              <ChevronUp className="size-3" />
+                            </Button>
+                            <span className="text-xs font-semibold text-muted-foreground w-4 text-center">
+                              {index + 1}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => moveSchoolDown(school.value, cat.key)}
+                              disabled={index === schoolsInCategory.length - 1}
+                              className="h-5 w-5 p-0 opacity-40 hover:opacity-100 disabled:opacity-15"
+                            >
+                              <ChevronDown className="size-3" />
+                            </Button>
+                          </div>
                           <Link
                             href={`/colleges/${getCollegeSlug(school.label)}`}
-                            className="font-medium hover:underline flex items-center gap-1"
+                            className="text-sm font-medium hover:underline flex items-center gap-1 flex-1 min-w-0"
                           >
-                            {school.label}
-                            <ExternalLink className="size-3 opacity-0 group-hover:opacity-50" />
+                            <span className="truncate">{school.label}</span>
+                            <ExternalLink className="size-3 opacity-0 group-hover:opacity-50 shrink-0" />
                           </Link>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <select
                               value={school.category}
                               onChange={(e) =>
                                 moveSchool(school.value, e.target.value as SchoolCategory)
                               }
-                              className="text-xs border rounded px-2 py-1 bg-background"
+                              className="text-xs border rounded px-1.5 py-0.5 bg-background"
                             >
-                              <option value="reach">Reach</option>
+                              <option value="aspirational">Aspirational</option>
                               <option value="target">Target</option>
                               <option value="safety">Safety</option>
                             </select>
@@ -232,9 +335,9 @@ export default function MySchoolsPage() {
                               variant="ghost"
                               size="icon-sm"
                               onClick={() => removeSchool(school.value)}
-                              className="opacity-0 group-hover:opacity-100"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
                             >
-                              <X className="size-4" />
+                              <X className="size-3.5" />
                             </Button>
                           </div>
                         </div>

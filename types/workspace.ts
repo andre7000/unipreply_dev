@@ -14,7 +14,8 @@ export interface NetPriceProfile {
 export interface SavedSchool {
   value: string;
   label: string;
-  category: "reach" | "target" | "safety";
+  category: "aspirational" | "target" | "safety";
+  rank?: number;
 }
 
 export interface WorkspaceStudent {

@@ -12,6 +12,7 @@ interface ScholarshipMetadata {
   eligibility?: string[];
   url?: string;
   organization?: string;
+  scholarshipType?: string;
 }
 
 async function generateEmbedding(text: string): Promise<number[]> {
@@ -36,7 +37,8 @@ async function extractMetadata(text: string): Promise<ScholarshipMetadata> {
   "deadline": "application deadline",
   "eligibility": ["eligibility requirement 1", "requirement 2"],
   "url": "application URL if present",
-  "organization": "sponsoring organization"
+  "organization": "sponsoring organization",
+  "scholarshipType": "one of: merit, need-based, athletic, rotc, departmental, diversity, stem, arts, community-service, or general"
 }
 
 Text:
@@ -94,6 +96,7 @@ export default async function handler(
       collegeName: collegeName || null,
       sourceUrl: sourceUrl || null,
       studentType: studentType || "both",
+      scholarshipType: metadata.scholarshipType || "general",
       embedding: embedding,
       embeddingModel: embedding.length > 0 ? "text-embedding-004" : null,
       createdAt: serverTimestamp(),
