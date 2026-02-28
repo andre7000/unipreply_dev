@@ -1,15 +1,22 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/config/firebaseConfig";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, Trash2 } from "lucide-react";
+import { Send, Loader2, Trash2, Database, ChevronDown, ChevronUp } from "lucide-react";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+}
+
+interface SchoolWithCDS {
+  id: string;
+  name: string;
 }
 
 export default function ChatPage() {
@@ -20,12 +27,34 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [schoolsWithCDS, setSchoolsWithCDS] = useState<SchoolWithCDS[]>([]);
+  const [showCdsSchools, setShowCdsSchools] = useState(true);
 
   useEffect(() => {
     if (!loading && !currentUser) {
       router.push("/");
     }
   }, [currentUser, loading, router]);
+
+  // Fetch schools with CDS data
+  useEffect(() => {
+    async function fetchSchoolsWithCDS() {
+      try {
+        const snapshot = await getDocs(collection(db, "collegeDatasets"));
+        const schools: SchoolWithCDS[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const name = data.Institution || data.A_General_Information?.A1_Address_Information?.Name || doc.id;
+          schools.push({ id: doc.id, name });
+        });
+        schools.sort((a, b) => a.name.localeCompare(b.name));
+        setSchoolsWithCDS(schools);
+      } catch (error) {
+        console.error("Error fetching schools with CDS:", error);
+      }
+    }
+    fetchSchoolsWithCDS();
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -137,7 +166,7 @@ export default function ChatPage() {
     <DashboardLayout title="Chat">
       <div className="flex flex-col h-[calc(100vh-10rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Unipreply Advisor</h1>
             <p className="text-muted-foreground">
@@ -151,6 +180,36 @@ export default function ChatPage() {
             </Button>
           )}
         </div>
+
+        {/* Schools with CDS Data */}
+        {schoolsWithCDS.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowCdsSchools(!showCdsSchools)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Database className="size-3 text-green-600" />
+              <span>{schoolsWithCDS.length} schools with CDS data</span>
+              {showCdsSchools ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            </button>
+            {showCdsSchools && (
+              <div className="mt-2 flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 bg-muted/30 rounded-lg border">
+                {schoolsWithCDS.map((school) => (
+                  <button
+                    key={school.id}
+                    onClick={() => {
+                      setInput(`Tell me about ${school.name}`);
+                      inputRef.current?.focus();
+                    }}
+                    className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors whitespace-nowrap"
+                  >
+                    {school.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Chat Messages */}
         <div

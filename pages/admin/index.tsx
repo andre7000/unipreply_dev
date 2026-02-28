@@ -33,7 +33,7 @@ export default function AdminPage() {
   const [scholarshipStatus, setScholarshipStatus] = useState<ScholarshipStatus>({ status: 'idle' });
   const [selectedCollege, setSelectedCollege] = useState('');
   const [scholarshipUrl, setScholarshipUrl] = useState('');
-  const [studentType, setStudentType] = useState<'first-year' | 'transfer' | 'both'>('both');
+  const [studentType, setStudentType] = useState<'first-year' | 'transfer' | 'both'>('first-year');
   const [uploadedDatasets, setUploadedDatasets] = useState<UploadedDataset[]>([]);
   const [datasetsLoading, setDatasetsLoading] = useState(true);
   const [datasetSearch, setDatasetSearch] = useState('');

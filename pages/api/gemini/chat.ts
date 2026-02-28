@@ -385,22 +385,25 @@ SAT Middle 50%    | 1480-1560| 1510-1560
         systemPrompt += formatScholarshipsForPrompt(scholarships, school);
       }
       systemPrompt += `\n=== END SCHOLARSHIP DATA ===`;
-      systemPrompt += `\n\nIMPORTANT FORMATTING for scholarship responses:
-1. Start with a brief intro sentence
-2. Then show each scholarship in a clearly separated block using this format:
+      systemPrompt += `\n\nCRITICAL FORMATTING RULES for scholarship responses:
+1. Start with ONE brief intro sentence
+2. For EVERY scholarship, you MUST use this EXACT format with --- delimiters:
 
 ---
-SCHOLARSHIP: [Name]
-Amount: [amount]
-Deadline: [deadline]
+SCHOLARSHIP: [Full scholarship name]
+Amount: [dollar amount or "Varies"]
+Deadline: [date or "Rolling" or "N/A"]
 Eligibility: [requirements]
-Type: [scholarship type]
+Type: [merit/need-based/etc]
 More Info: [URL]
 ---
 
-3. Use the dashed lines (---) to create visual separation between scholarships
-4. Always include the source URL at the end
-5. Keep the scholarship data visually distinct from your commentary`;
+3. EVERY scholarship MUST start with --- on its own line
+4. EVERY scholarship MUST end with --- on its own line  
+5. Use "SCHOLARSHIP:" (not "Name:") for the scholarship name
+6. Include ALL scholarships from the data, each in its own --- block
+7. Do NOT skip the --- delimiters for any scholarship
+8. After listing all scholarships, you may add a brief closing note`;
     }
 
     // Convert messages to Gemini format

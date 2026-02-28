@@ -14,20 +14,24 @@ function ScholarshipBlock({ content }: { content: string }) {
   const data: Record<string, string> = {};
   
   for (const line of lines) {
-    const match = line.match(/^(SCHOLARSHIP|Amount|Deadline|Eligibility|Type|For|More Info):\s*(.+)$/i);
+    // Match various formats: "SCHOLARSHIP: Name", "Amount: $X", "**Amount:** $X", etc.
+    const match = line.match(/^\*?\*?(SCHOLARSHIP|Name|Amount|Deadline|Eligibility|Type|For|More Info|Details|Website|Link)\*?\*?:\s*(.+)$/i);
     if (match) {
-      data[match[1].toLowerCase()] = match[2].trim();
+      const key = match[1].toLowerCase();
+      // Map "name" to "scholarship" for consistency
+      const normalizedKey = key === 'name' ? 'scholarship' : key;
+      data[normalizedKey] = match[2].trim().replace(/\*+/g, '');
     }
   }
   
   const name = data['scholarship'] || 'Scholarship';
-  const url = data['more info'];
+  const url = data['more info'] || data['website'] || data['link'];
   
   return (
-    <div className="my-3 p-4 rounded-lg border-2 border-primary/20 bg-primary/5">
+    <div className="my-3 p-4 rounded-lg border border-gray-300 bg-gray-100">
       <div className="flex items-start gap-2 mb-2">
         <GraduationCap className="size-5 text-primary mt-0.5 shrink-0" />
-        <h4 className="font-semibold text-primary">{name}</h4>
+        <h4 className="font-semibold text-foreground">{name}</h4>
       </div>
       <div className="space-y-1.5 text-sm ml-7">
         {data['amount'] && (
@@ -44,6 +48,9 @@ function ScholarshipBlock({ content }: { content: string }) {
         )}
         {data['for'] && (
           <p><span className="font-medium">For:</span> {data['for']}</p>
+        )}
+        {data['details'] && (
+          <p><span className="font-medium">Details:</span> {data['details']}</p>
         )}
         {url && (
           <a 
@@ -138,38 +145,62 @@ function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
 function parseContent(content: string): Array<{ type: 'text' | 'table' | 'scholarship'; content: string }> {
   const parts: Array<{ type: 'text' | 'table' | 'scholarship'; content: string }> = [];
   
-  // First, extract scholarship blocks (content between --- lines that contain SCHOLARSHIP:)
-  const scholarshipPattern = /---\n([\s\S]*?SCHOLARSHIP:[\s\S]*?)---/gi;
-  let lastIndex = 0;
-  let match;
+  // Simple approach: split by --- and check each segment
+  const segments = content.split(/^---$/m);
   
-  while ((match = scholarshipPattern.exec(content)) !== null) {
-    // Add text before this scholarship block
-    if (match.index > lastIndex) {
-      const beforeText = content.slice(lastIndex, match.index);
-      if (beforeText.trim()) {
-        parts.push(...parseTextAndTables(beforeText));
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i].trim();
+    if (!segment) continue;
+    
+    // Check if this segment looks like a scholarship (has SCHOLARSHIP: or scholarship-like fields)
+    const isScholarship = /SCHOLARSHIP:/i.test(segment) || 
+      (/Amount:/i.test(segment) && (/Deadline:/i.test(segment) || /Eligibility:/i.test(segment)));
+    
+    if (isScholarship) {
+      parts.push({ type: 'scholarship', content: segment });
+    } else {
+      // Parse as text/tables
+      parts.push(...parseTextAndTables(segment));
+    }
+  }
+  
+  // If no --- delimiters found, try to find SCHOLARSHIP: blocks directly
+  if (segments.length <= 1) {
+    const scholarshipPattern = /SCHOLARSHIP:\s*[^\n]+(?:\n(?!SCHOLARSHIP:)[^\n]*)*?(?=\nSCHOLARSHIP:|\n\n(?=[A-Z])|$)/gi;
+    let match;
+    let lastIndex = 0;
+    const scholarshipMatches: { start: number; end: number; content: string }[] = [];
+    
+    while ((match = scholarshipPattern.exec(content)) !== null) {
+      scholarshipMatches.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        content: match[0].trim()
+      });
+    }
+    
+    if (scholarshipMatches.length > 0) {
+      parts.length = 0; // Clear parts
+      for (const m of scholarshipMatches) {
+        if (m.start > lastIndex) {
+          const beforeText = content.slice(lastIndex, m.start).trim();
+          if (beforeText) {
+            parts.push(...parseTextAndTables(beforeText));
+          }
+        }
+        parts.push({ type: 'scholarship', content: m.content });
+        lastIndex = m.end;
+      }
+      if (lastIndex < content.length) {
+        const afterText = content.slice(lastIndex).trim();
+        if (afterText) {
+          parts.push(...parseTextAndTables(afterText));
+        }
       }
     }
-    // Add scholarship block
-    parts.push({ type: 'scholarship', content: match[1].trim() });
-    lastIndex = match.index + match[0].length;
   }
   
-  // Add remaining content after last scholarship block
-  if (lastIndex < content.length) {
-    const afterText = content.slice(lastIndex);
-    if (afterText.trim()) {
-      parts.push(...parseTextAndTables(afterText));
-    }
-  }
-  
-  // If no scholarship blocks found, parse normally
-  if (parts.length === 0) {
-    return parseTextAndTables(content);
-  }
-  
-  return parts;
+  return parts.length > 0 ? parts : parseTextAndTables(content);
 }
 
 // Parse text and tables (original logic)
